@@ -5,6 +5,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const mongoose = require("mongoose");
 const Patient = require('../models/Patient');
+const Doctor=require('../models/Doctors');
 
 
 
@@ -116,36 +117,52 @@ router.post("/login", async (req, res) => {
 });
 
 
-
-
-// Get Patient Details by ID 
-router.get("/:id", async (req, res) => {
-  try {
-      const { id } = req.params;
-      
-      console.log(`Fetching patient with ID: ${id}`);
-
-      // Remove ObjectId validation since we're using string IDs
-      const patient = await Patient.findOne({ _id: id })
-          .select('-password') // Exclude password from the response
-          .lean(); // Convert to plain JavaScript object
-
-      if (!patient) {
-          console.log('No patient found with ID:', id);
-          return res.status(404).json({ message: "Patient not found" });
+// ✅ Specific route should come first
+router.get("/specialist_list", async (req, res) => {
+    try {
+      const { specialization } = req.query;
+      console.log("Received specialization:", specialization);
+  
+      if (!specialization) {
+        return res.status(400).json({ message: "Specialization is required" });
       }
-
-      console.log('Found patient:', patient);
+  
+      const doctors = await Doctor.find({ specialization });
+  
+      if (doctors.length === 0) {
+        return res.status(404).json({ message: "No doctors found for this specialization" });
+      }
+  
+      res.json(doctors);
+    } catch (error) {
+      console.error("Error fetching specialist list:", error);
+      res.status(500).json({ message: "Error fetching specialist list" });
+    }
+  });
+  
+  // ✅ Dynamic patient route should be last
+  router.get("/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      console.log(`Fetching patient with ID: ${id}`);
+  
+      const patient = await Patient.findOne({ _id: id }).select("-password").lean();
+  
+      if (!patient) {
+        console.log("No patient found with ID:", id);
+        return res.status(404).json({ message: "Patient not found" });
+      }
+  
+      console.log("Found patient:", patient);
       res.json(patient);
-  } catch (error) {
+    } catch (error) {
       console.error("Error fetching patient:", error);
-      res.status(500).json({ 
-          message: "Server error", 
-          error: error.message 
-      });
-  }
-});
-
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  });
+  
+  
+  
 
 module.exports = router;
 

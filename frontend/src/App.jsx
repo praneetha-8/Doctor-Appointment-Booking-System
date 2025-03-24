@@ -7,6 +7,7 @@ import AdminLogin from './pages/AdminLogin'
 import PatientSignup from './pages/PatientSignup'
 import PatientDashboard from './pages/PatientDashboard'
 import AdminDashboard from './pages/AdminDashboard'
+import SpecialistList from './pages/SpecialistList'
 
 
 
@@ -21,6 +22,8 @@ const App = () => {
         <Route path="/patient-signup" element={<PatientSignup />} /> 
         <Route path="/patient-dashboard" element={<PatientDashboard />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/patient-dashboard/specialist" element={<SpecialistList />} />
+        
         
         
       </Routes>
