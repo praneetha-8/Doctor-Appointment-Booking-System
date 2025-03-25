@@ -10,12 +10,20 @@ const PatientAppointments = ({ patientId }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!patientId) {
+      setError("Invalid patient ID");
+      setLoading(false);
+      return;
+    }
+
     const fetchAppointments = async () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/api/appointments/${patientId}`);
+        console.log("🟢 API Response Data:", response.data); // Debugging
         setAppointments(response.data);
       } catch (err) {
-        setError("Failed to load appointments");
+        console.error("🔴 API Fetch Error:", err);
+        setError(err.response?.data?.message || "Failed to load appointments");
       } finally {
         setLoading(false);
       }
@@ -29,8 +37,17 @@ const PatientAppointments = ({ patientId }) => {
 
   // Categorize appointments
   const today = new Date();
-  const upcomingAppointments = appointments.filter(app => new Date(app.date) >= today);
-  const previousAppointments = appointments.filter(app => new Date(app.date) < today);
+  today.setHours(0, 0, 0, 0); // Reset time for accurate date comparison
+
+  const upcomingAppointments = appointments.filter((app) => {
+    const appDate = new Date(app.appointment_date);
+    return appDate >= today;
+  });
+
+  const previousAppointments = appointments.filter((app) => {
+    const appDate = new Date(app.appointment_date);
+    return appDate < today;
+  });
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
@@ -42,10 +59,14 @@ const PatientAppointments = ({ patientId }) => {
         {upcomingAppointments.length > 0 ? (
           <ul className="space-y-4">
             {upcomingAppointments.map((app) => (
-              <li key={app.id} className="bg-white p-4 rounded-lg shadow-md">
-                <p className="text-lg font-semibold">{app.specialist}</p>
-                <p className="text-gray-600">{format(new Date(app.date), "PPpp")}</p>
-                <p className="text-gray-500">{app.status}</p>
+              <li key={app._id} className="bg-white p-4 rounded-lg shadow-md">
+                <p className="text-lg font-semibold">{app.doctor_name} ({app.specialization})</p>
+                <p className="text-gray-600">
+                  {format(new Date(app.appointment_date), "PPpp")} - {app.time_slot}
+                </p>
+                <p className={`text-sm font-medium ${app.status === "Confirmed" ? "text-green-600" : "text-red-600"}`}>
+                  {app.status}
+                </p>
               </li>
             ))}
           </ul>
@@ -60,10 +81,14 @@ const PatientAppointments = ({ patientId }) => {
         {previousAppointments.length > 0 ? (
           <ul className="space-y-4">
             {previousAppointments.map((app) => (
-              <li key={app.id} className="bg-white p-4 rounded-lg shadow-md">
-                <p className="text-lg font-semibold">{app.specialist}</p>
-                <p className="text-gray-600">{format(new Date(app.date), "PPpp")}</p>
-                <p className="text-gray-500">{app.status}</p>
+              <li key={app._id} className="bg-white p-4 rounded-lg shadow-md">
+                <p className="text-lg font-semibold">{app.doctor_name} ({app.specialization})</p>
+                <p className="text-gray-600">
+                  {format(new Date(app.appointment_date), "PPpp")} - {app.time_slot}
+                </p>
+                <p className={`text-sm font-medium ${app.status === "Confirmed" ? "text-green-600" : "text-red-600"}`}>
+                  {app.status}
+                </p>
               </li>
             ))}
           </ul>

@@ -146,17 +146,17 @@ router.get("/specialist_list", async (req, res) => {
       const { id } = req.params;
       console.log(`Fetching patient with ID: ${id}`);
   
-      const patient = await Patient.findOne({ _id: id }).select("-password").lean();
+      const patient = await Patient.findById(id).select("-password").lean();
   
       if (!patient) {
-        console.log("No patient found with ID:", id);
+        console.log(`No patient found with ID: ${id}`);
         return res.status(404).json({ message: "Patient not found" });
       }
   
       console.log("Found patient:", patient);
       res.json(patient);
     } catch (error) {
-      console.error("Error fetching patient:", error);
+      console.error("Error fetching patient:", error.message);
       res.status(500).json({ message: "Server error", error: error.message });
     }
   });

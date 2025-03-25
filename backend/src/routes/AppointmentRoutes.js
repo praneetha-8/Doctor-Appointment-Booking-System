@@ -21,10 +21,13 @@ router.get("/", async (req, res) => {
   router.get("/:patientId", async (req, res) => {
     try {
       const { patientId } = req.params;
-      console.log(`🔍 Fetching appointments for patient_id: ${patientId}`);
+      console.log(`🔍 Received patientId: '${patientId}' (Type: ${typeof patientId})`);
   
+      // Fetch appointments where patient_id matches the given patientId
       const appointments = await Appointment.find({ patient_id: patientId });
+  
       if (!appointments.length) {
+        console.log("⚠️ No appointments found for this patient.");
         return res.status(404).json({ message: "No appointments found for this patient" });
       }
   
@@ -35,5 +38,6 @@ router.get("/", async (req, res) => {
       res.status(500).json({ message: "Error fetching appointments", error });
     }
   });
+  
   
   module.exports = router;
