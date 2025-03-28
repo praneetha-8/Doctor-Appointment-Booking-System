@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const Appointment = require("../models/Appointments");
-
+const { v4: uuidv4 } = require("uuid");
 
 router.get("/", async (req, res) => {
     try {
@@ -17,6 +17,41 @@ router.get("/", async (req, res) => {
     }
   });
   
+  
+  router.post("/book", async (req, res) => {
+    try {
+      const { patient_id, doctor_name, patient_name, specialization, appointment_date, time_slot } = req.body;
+  
+      // Check for missing fields
+      if (!patient_id || !doctor_name || !patient_name || !specialization || !appointment_date || !time_slot) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+  
+      // Generate a unique _id
+      const newAppointment = new Appointment({
+        _id: uuidv4(), // Generate unique ID
+        patient_id,
+        doctor_name,
+        patient_name,
+        specialization,
+        appointment_date,
+        time_slot,
+        status: "Confirmed", // Default status
+      });
+  
+      await newAppointment.save();
+      res.status(201).json({ message: "Appointment booked successfully", appointment: newAppointment });
+  
+    } catch (error) {
+      console.error("Error booking appointment:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  module.exports = router;
+  
+
+
   // ✅ Get Appointments by Patient ID
   router.get("/:patientId", async (req, res) => {
     try {

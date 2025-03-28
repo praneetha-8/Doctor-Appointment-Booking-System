@@ -45,7 +45,7 @@ const DoctorsList = () => {
             <th className="p-3 border">Specialization</th>
             <th className="p-3 border">Email</th>
             <th className="p-3 border">Phone</th>
-            <th className="p-3 border">Availability</th>
+            <th className="p-3 border">Time Slot</th>
           </tr>
         </thead>
         <tbody>
@@ -56,10 +56,7 @@ const DoctorsList = () => {
                 <td className="p-3 border">{doctor.specialization}</td>
                 <td className="p-3 border">{doctor.email}</td>
                 <td className="p-3 border">{doctor.phone}</td>
-                <td className="p-3 border">
-                  Days: {doctor.availability?.days?.join(", ") || "N/A"} <br />
-                  Slots: {doctor.availability?.slots?.join(", ") || "N/A"}
-                </td>
+                <td className="p-3 border">{doctor.time_slot || "N/A"}</td>
               </tr>
             ))
           ) : (

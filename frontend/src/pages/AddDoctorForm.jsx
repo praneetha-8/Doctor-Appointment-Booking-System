@@ -1,12 +1,26 @@
 import React, { useState } from "react";
 
+const specializations = [
+  "Cardiologist",
+  "Dermatologist",
+  "Neurologist",
+  "Orthopedic Surgeon",
+  "Pediatrician",
+  "General Physician",
+  "Gynecologist",
+  "Psychiatrist",
+  "Ophthalmologist",
+  "Dentist",
+];
+
 const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
   const [newDoctor, setNewDoctor] = useState({
     name: "",
     specialization: "",
     email: "",
     phone: "",
-    availability: { days: "", slots: "" },
+    start_time: "",
+    end_time: "",
   });
 
   const handleAddDoctor = async (e) => {
@@ -18,12 +32,15 @@ const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
         body: JSON.stringify(newDoctor),
       });
 
-      if (!response.ok) throw new Error("Failed to add doctor");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to add doctor");
+      }
 
-      const savedDoctor = await response.json(); // Get newly added doctor from response
-
+      const savedDoctor = await response.json(); // Get the newly added doctor from the response
       alert("Doctor added successfully!");
-      onDoctorAdded(savedDoctor); // Send new doctor data to parent component
+      onDoctorAdded(savedDoctor); // Send new doctor data to the parent component
+      onClose();
     } catch (error) {
       console.error("Error adding doctor:", error);
     }
@@ -42,14 +59,21 @@ const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
             required
             className="border p-2 w-full mb-2"
           />
-          <input
-            type="text"
-            placeholder="Specialization"
+
+          {/* Dropdown for Specialization */}
+          <label className="block text-gray-700 text-sm font-bold mb-1">Specialization</label>
+          <select
             value={newDoctor.specialization}
             onChange={(e) => setNewDoctor({ ...newDoctor, specialization: e.target.value })}
             required
             className="border p-2 w-full mb-2"
-          />
+          >
+            <option value="" disabled>Select Specialization</option>
+            {specializations.map((spec, index) => (
+              <option key={index} value={spec}>{spec}</option>
+            ))}
+          </select>
+
           <input
             type="email"
             placeholder="Email"
@@ -66,30 +90,27 @@ const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
             required
             className="border p-2 w-full mb-2"
           />
+
+          {/* Time Picker for Start Time */}
+          <label className="block text-gray-700 text-sm font-bold mb-1">Start Time</label>
           <input
-            type="text"
-            placeholder="Available Days (e.g., Monday, Wednesday)"
-            value={newDoctor.availability.days}
-            onChange={(e) =>
-              setNewDoctor({
-                ...newDoctor,
-                availability: { ...newDoctor.availability, days: e.target.value },
-              })
-            }
+            type="time"
+            value={newDoctor.start_time}
+            onChange={(e) => setNewDoctor({ ...newDoctor, start_time: e.target.value })}
+            required
             className="border p-2 w-full mb-2"
           />
+
+          {/* Time Picker for End Time */}
+          <label className="block text-gray-700 text-sm font-bold mb-1">End Time</label>
           <input
-            type="text"
-            placeholder="Available Slots (e.g., 10AM-12PM)"
-            value={newDoctor.availability.slots}
-            onChange={(e) =>
-              setNewDoctor({
-                ...newDoctor,
-                availability: { ...newDoctor.availability, slots: e.target.value },
-              })
-            }
+            type="time"
+            value={newDoctor.end_time}
+            onChange={(e) => setNewDoctor({ ...newDoctor, end_time: e.target.value })}
+            required
             className="border p-2 w-full mb-2"
           />
+
           <div className="flex justify-between">
             <button className="bg-green-500 text-white px-4 py-2 rounded" type="submit">
               Save Doctor

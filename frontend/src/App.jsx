@@ -8,6 +8,7 @@ import PatientSignup from './pages/PatientSignup'
 import PatientDashboard from './pages/PatientDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import SpecialistList from './pages/SpecialistList'
+import BookingConfirmed from './pages/ConfirmBooking'
 
 
 
@@ -23,6 +24,7 @@ const App = () => {
         <Route path="/patient-dashboard" element={<PatientDashboard />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/patient-dashboard/specialist" element={<SpecialistList />} />
+        <Route path="/patient-dashboard/specialist/booking-confirmed" element={<BookingConfirmed />} />
         
         
         

@@ -7,10 +7,7 @@ const doctorSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     phone: { type: String, required: true },
     password: { type: String, required: false }, // ✅ Adding password field
-    availability: {
-        days: { type: [String], default: [] }, // Array of available days
-        slots: { type: [String], default: [] }, // Array of time slots
-    },
+    time_slot: { type: String, required: true },
 });
 
 

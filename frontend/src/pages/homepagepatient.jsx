@@ -8,7 +8,7 @@ const specialists = [
   { name: "General Physician", icon: <Stethoscope />, field: "General" },
   { name: "Neurologist", icon: <Brain />, field: "Neurology" },
   { name: "Cardiologist", icon: <Heart />, field: "Cardiology" },
-  { name: "Dentist", icon: <FontAwesomeIcon icon={faTooth} className="text-2xl mb-0 mt-0"/>, field: "Dentistry" }, 
+  { name: "Dentist", icon: <FontAwesomeIcon icon={faTooth} className="text-2xl mb-0 mt-0"/>, field: "Dentist" }, 
   { name: "Orthopedic", icon: <Bone />, field: "Orthopedics" },
   { name: "Ophthalmologist", icon: <Eye />, field: "Ophthalmology" },
   { name: "ENT Specialist", icon: <Ear />, field: "ENT" },

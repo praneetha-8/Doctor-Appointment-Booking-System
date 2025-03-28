@@ -13,26 +13,27 @@ router.get("/viewdoctors", async (req, res) => {
     res.status(500).json({ message: "Error fetching doctors", error: error.message });
   }
 });
-
-// Add a new doctor
 router.post("/add", async (req, res) => {
   try {
     console.log("Request Body:", req.body);
-    const { name, specialization, email, phone, password, availability } = req.body;
+    const { name, specialization, email, phone, password, start_time, end_time } = req.body;
+
+    // Ensure start_time and end_time are provided
+    if (!start_time || !end_time) {
+      return res.status(400).json({ message: "Start time and end time are required" });
+    }
+
+    // Format the time slot as "HH:MM AM - HH:MM PM"
+    const time_slot = `${start_time} - ${end_time}`;
 
     const newDoctor = new Doctor({
-      _id: new mongoose.Types.ObjectId().toString(), // Ensure _id is a string
+      _id: new mongoose.Types.ObjectId().toString(),
       name,
       specialization,
       email,
       phone,
-      // Use provided password or fallback to "defaultPassword"
       password: await bcrypt.hash(password || "defaultPassword", 10),
-      availability: {
-        // Convert days and slots into arrays
-        days: availability.days ? availability.days.split(",").map(day => day.trim()) : [],
-        slots: availability.slots ? availability.slots.split(",").map(slot => slot.trim()) : []
-      },
+      time_slot, // Store the combined time slot as a string
     });
 
     await newDoctor.save();
