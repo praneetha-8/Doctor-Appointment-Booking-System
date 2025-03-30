@@ -21,15 +21,27 @@ const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
     phone: "",
     start_time: "",
     end_time: "",
+    time_slot: "", // ✅ Included in state
   });
 
   const handleAddDoctor = async (e) => {
     e.preventDefault();
     try {
+      const token = localStorage.getItem("adminToken");
+      if (!token) {
+        alert("Unauthorized! Please log in.");
+        return;
+      }
+
+      console.log(newDoctor);
+
       const response = await fetch("http://localhost:5000/api/doctors/add", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newDoctor),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify(newDoctor), // ✅ No need to manually add `time_slot`
       });
 
       if (!response.ok) {
@@ -37,9 +49,9 @@ const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
         throw new Error(errorData.message || "Failed to add doctor");
       }
 
-      const savedDoctor = await response.json(); // Get the newly added doctor from the response
+      const savedDoctor = await response.json();
       alert("Doctor added successfully!");
-      onDoctorAdded(savedDoctor); // Send new doctor data to the parent component
+      onDoctorAdded(savedDoctor);
       onClose();
     } catch (error) {
       console.error("Error adding doctor:", error);
@@ -60,7 +72,6 @@ const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
             className="border p-2 w-full mb-2"
           />
 
-          {/* Dropdown for Specialization */}
           <label className="block text-gray-700 text-sm font-bold mb-1">Specialization</label>
           <select
             value={newDoctor.specialization}
@@ -91,22 +102,34 @@ const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
             className="border p-2 w-full mb-2"
           />
 
-          {/* Time Picker for Start Time */}
           <label className="block text-gray-700 text-sm font-bold mb-1">Start Time</label>
           <input
             type="time"
             value={newDoctor.start_time}
-            onChange={(e) => setNewDoctor({ ...newDoctor, start_time: e.target.value })}
+            onChange={(e) => {
+              const start_time = e.target.value;
+              setNewDoctor({ 
+                ...newDoctor, 
+                start_time, 
+                time_slot: `${start_time} - ${newDoctor.end_time}` // ✅ Updates `time_slot`
+              });
+            }}
             required
             className="border p-2 w-full mb-2"
           />
 
-          {/* Time Picker for End Time */}
           <label className="block text-gray-700 text-sm font-bold mb-1">End Time</label>
           <input
             type="time"
             value={newDoctor.end_time}
-            onChange={(e) => setNewDoctor({ ...newDoctor, end_time: e.target.value })}
+            onChange={(e) => {
+              const end_time = e.target.value;
+              setNewDoctor({ 
+                ...newDoctor, 
+                end_time, 
+                time_slot: `${newDoctor.start_time} - ${end_time}` // ✅ Updates `time_slot`
+              });
+            }}
             required
             className="border p-2 w-full mb-2"
           />

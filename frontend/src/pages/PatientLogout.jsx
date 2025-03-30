@@ -4,13 +4,27 @@ import { useNavigate } from 'react-router-dom';
 const PatientLogout = () => {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    // Clear any stored authentication tokens or session data
-    localStorage.removeItem('patientToken');
-    sessionStorage.removeItem('patientSession');
-    
-    // Redirect to the login page
-    navigate('/patient-login');
+  const handleLogout = async () => {
+    try {
+      // Optionally, inform the backend about logout (if applicable)
+      await fetch("http://localhost:5000/api/patients/logout", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`, // Send token if needed
+        },
+      });
+
+      // Clear JWT token and session data
+      
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      sessionStorage.clear();
+
+      // Redirect to login page
+      navigate("/patient-login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
   return (

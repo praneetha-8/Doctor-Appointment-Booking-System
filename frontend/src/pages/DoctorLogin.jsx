@@ -18,12 +18,18 @@ const DoctorLogin = () => {
         password,
       });
 
+      const { token, doctor } = response.data;
       console.log("Backend Response:", response.data);
-      console.log("Stored doctorId:", response.data.doctor._id);
-      
-      navigate("/doctor-dashboard", { state: { doctorId: response.data.doctor._id } }); // Redirect after successful login
+      console.log("Stored doctorId:", doctor._id);
+
+      // Store token in localStorage
+      localStorage.setItem("token", token);
+      localStorage.setItem("doctorId", doctor._id);
+
+      // Redirect after successful login
+      navigate("/doctor-dashboard", { state: { doctorId: doctor._id } });
     } catch (error) {
-      setError(error.response?.data.message || "Login failed. Try again.");
+      setError(error.response?.data?.message || "Login failed. Try again.");
     }
   };
 

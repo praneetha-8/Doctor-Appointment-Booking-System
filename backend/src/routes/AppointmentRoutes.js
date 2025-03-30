@@ -1,78 +1,110 @@
-
-const express = require('express');
+require("dotenv").config();
+const express = require("express");
 const router = express.Router();
 const Appointment = require("../models/Appointments");
+const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
 
-router.get("/", async (req, res) => {
-    try {
-      const appointments = await Appointment.find();
-      if (!appointments.length) {
-        return res.status(404).json({ error: "No appointments found" });
+const JWT_SECRET = process.env.JWT_SECRET;
+
+
+
+const authenticateUser = (req, res, next) => {
+  const authHeader = req.header("Authorization");
+
+  if (!authHeader) {
+      return res.status(401).json({ message: "Access denied. No token provided." });
+  }
+
+  const token = authHeader.split(" ")[1]; // ✅ Extract token
+  if (!token) {
+      return res.status(401).json({ message: "Invalid token format" });
+  }
+
+  try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET); // Ensure JWT_SECRET is used from environment variables
+
+      // ✅ Ensure decoded token contains `_id`
+      if (!decoded._id) {
+          return res.status(401).json({ message: "Invalid token structure. Missing _id." });
       }
-      res.json(appointments);
+
+      req.user = { _id: decoded._id }; // ✅ Attach `_id`
+      console.log("🟢 Authenticated User ID:", req.user._id);
+
+      next();
+  } catch (error) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+  }
+};
+
+
+// ✅ Get All Appointments (Protected)
+router.get("/", authenticateUser, async (req, res) => {
+    try {
+        const appointments = await Appointment.find();
+        res.json(appointments);
     } catch (error) {
-      console.error("Error fetching appointments:", error);
-      res.status(500).json({ error: "Failed to fetch appointments" });
+        console.error("Error fetching appointments:", error);
+        res.status(500).json({ error: "Failed to fetch appointments" });
     }
-  });
-  
-  
-  router.post("/book", async (req, res) => {
-    try {
+});
+router.post("/book", authenticateUser, async (req, res) => {
+  try {
+      console.log("Received Appointment Data:", req.body); // Debug log
+
+      // Extract patient_id from request body instead of req.user
       const { patient_id, doctor_name, patient_name, specialization, appointment_date, time_slot } = req.body;
-  
-      // Check for missing fields
+
       if (!patient_id || !doctor_name || !patient_name || !specialization || !appointment_date || !time_slot) {
-        return res.status(400).json({ error: "Missing required fields" });
+          return res.status(400).json({ error: "Missing required fields" });
       }
-  
-      // Generate a unique _id
+
       const newAppointment = new Appointment({
-        _id: uuidv4(), // Generate unique ID
-        patient_id,
-        doctor_name,
-        patient_name,
-        specialization,
-        appointment_date,
-        time_slot,
-        status: "Confirmed", // Default status
+          _id: uuidv4(),
+          patient_id, // ✅ Now using patient_id from req.body
+          doctor_name,
+          patient_name,
+          specialization,
+          appointment_date,
+          time_slot,
+          status: "Confirmed",
       });
-  
+
       await newAppointment.save();
       res.status(201).json({ message: "Appointment booked successfully", appointment: newAppointment });
-  
-    } catch (error) {
+  } catch (error) {
       console.error("Error booking appointment:", error);
       res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/:patientId", authenticateUser, async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const authenticatedUserId = req.user._id; // Get logged-in user ID
+
+    console.log(`🟢 Requested Patient ID: ${patientId}`);
+    console.log(`🟢 Authenticated User ID: ${authenticatedUserId}`);
+
+    // Ensure that the user is only accessing their own data
+    if (authenticatedUserId !== patientId) {
+      console.warn("🔴 Unauthorized access attempt.");
+      return res.status(403).json({ message: "Access denied. Unauthorized request." });
     }
-  });
-  
-  module.exports = router;
-  
+
+    const appointments = await Appointment.find({ patient_id: patientId });
+
+    if (!appointments.length) {
+      return res.status(404).json({ message: "No appointments found for this patient" });
+    }
+
+    res.json(appointments);
+  } catch (error) {
+    console.error("❌ Error fetching appointments:", error);
+    res.status(500).json({ message: "Error fetching appointments", error });
+  }
+});
 
 
-  // ✅ Get Appointments by Patient ID
-  router.get("/:patientId", async (req, res) => {
-    try {
-      const { patientId } = req.params;
-      console.log(`🔍 Received patientId: '${patientId}' (Type: ${typeof patientId})`);
-  
-      // Fetch appointments where patient_id matches the given patientId
-      const appointments = await Appointment.find({ patient_id: patientId });
-  
-      if (!appointments.length) {
-        console.log("⚠️ No appointments found for this patient.");
-        return res.status(404).json({ message: "No appointments found for this patient" });
-      }
-  
-      console.log("📌 Found Appointments:", appointments);
-      res.json(appointments);
-    } catch (error) {
-      console.error("❌ Error fetching appointments:", error);
-      res.status(500).json({ message: "Error fetching appointments", error });
-    }
-  });
-  
-  
-  module.exports = router;
+module.exports = router;

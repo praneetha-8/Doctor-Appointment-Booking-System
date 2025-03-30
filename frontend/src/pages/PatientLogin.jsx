@@ -19,20 +19,23 @@ const PatientLogin = () => {
       });
 
       console.log("Backend Response:", response.data);
-      
-      console.log("Stored patientId:", response.data.patient._id); 
-      
-      navigate("/patient-dashboard", { state: { patientId: response.data.patient._id } }); // Redirect after successful login
+
+      // ✅ Store JWT token & patient data in localStorage
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("patient", JSON.stringify(response.data.patient));
+
+      console.log("Stored patientId:", response.data.patient._id);
+
+      // ✅ Redirect to dashboard after successful login
+      navigate("/patient-dashboard");
     } catch (error) {
       setError(error.response?.data.message || "Login failed. Try again.");
     }
   };
 
-
   const handleSignupClick = () => {
     navigate("/patient-signup");
   };
-
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4">
@@ -86,7 +89,6 @@ const PatientLogin = () => {
             Sign up
           </button>
         </div>
-
       </div>
     </div>
   );

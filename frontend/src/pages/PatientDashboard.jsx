@@ -1,19 +1,16 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Home, Calendar, User, MessageCircle, LogOut } from "lucide-react";
 import Profile from "./PatientProfile";
 import Logout from "./PatientLogout";
 import Homepagepatient from "./homepagepatient";
-import PatientAppointments from "./PatientAppointments"; // ✅ Import new Appointments component
+import PatientAppointments from "./PatientAppointments";
 
 const API_BASE_URL = "http://localhost:5000";
 
 const PatientDashboard = () => {
-  const location = useLocation();
   const navigate = useNavigate();
-
-  const patientId = location.state?.patientId;
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -21,24 +18,36 @@ const PatientDashboard = () => {
 
   useEffect(() => {
     const fetchPatientData = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        navigate("/patient-login"); // Redirect to login if not authenticated
+        return;
+      }
+
       try {
-        if (!patientId) {
-          setError("No patient ID provided");
-          setLoading(false);
-          return;
-        }
-        console.log(`Patient ID is ${patientId}`);
-        const response = await axios.get(`${API_BASE_URL}/api/patients/${patientId}`);
+        const response = await axios.get(`${API_BASE_URL}/api/patients/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setPatient(response.data);
       } catch (err) {
-        setError("Failed to load patient data");
+        console.error("🔴 Error fetching patient data:", err.response?.data || err.message);
+        
+        if (err.response?.status === 401) {
+          console.warn("⚠️ Unauthorized! Redirecting to login...");
+          localStorage.removeItem("token");
+          navigate("/patient-login");
+        } else {
+          setError("Failed to load patient data. Please try again.");
+        }
       } finally {
         setLoading(false);
       }
+      
     };
 
     fetchPatientData();
-  }, [patientId]);
+  }, [navigate]);
 
   if (loading) return <div className="text-center py-10">Loading...</div>;
   if (error) return <div className="text-red-500 text-center py-10">{error}</div>;
@@ -87,19 +96,13 @@ const PatientDashboard = () => {
         {activeSection === "home" && (
           <div>
             <h1 className="text-3xl font-bold mb-6">Welcome, {patient?.name}</h1>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-xl font-semibold mb-4">Upcoming Appointments</h2>
-              <p>{patient?.upcomingAppointments?.join(", ") || "No upcoming appointments"}</p>
-            </div>
-
-            {/* ✅ Show specialists directly in the home section */}
             <div className="mt-8">
-              <Homepagepatient patientId={patientId} />
+              <Homepagepatient patientId={patient?._id} />
             </div>
           </div>
         )}
 
-        {activeSection === "appointments" && <PatientAppointments patientId={patientId} />}
+        {activeSection === "appointments" && <PatientAppointments patientId={patient?._id} />}
         {activeSection === "profile" && <Profile patient={patient} />}
         {activeSection === "logout" && <Logout />}
       </div>

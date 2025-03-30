@@ -1,35 +1,46 @@
+require("dotenv").config(); // Load environment variables
 
-
-
-const express = require('express');
-const bcrypt = require('bcryptjs');
+const express = require("express");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
-const Patient = require('../models/Patient');
-const Doctor=require('../models/Doctors');
-
-
-
+const Patient = require("../models/Patient");
+const Doctor = require("../models/Doctors");
+const Appointment=require("../models/Appointments")
 const router = express.Router();
-require("dotenv").config();
 
-// ✅ Get All Patients
-router.get('/', async (req, res) => {
+// ✅ Middleware to verify JWT
+const verifyToken = (req, res, next) => {
+    const authHeader = req.header("Authorization");
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "Access Denied. No token provided." });
+    }
+
+    const token = authHeader.split(" ")[1]; // Extract token
+
     try {
-      const patients = await Patient.find();
-      res.json(patients);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.patient = decoded; // Attach decoded patient details
+        next();
     } catch (error) {
-      res.status(500).json({ message: "Error fetching patients", error: error.message });
+        return res.status(401).json({ message: "Invalid or expired token" });
+    }
+};
+
+// ✅ Get All Patients (Protected)
+router.get("/", verifyToken, async (req, res) => {
+    try {
+        const patients = await Patient.find().select("-password");
+        res.json(patients);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching patients", error: error.message });
     }
 });
 
-// ✅ Get Patient Schema
-router.get('/schema', (req, res) => {
-    res.json(Patient.schema.obj);
-});
 // ✅ Patient Signup
 router.post("/signup", async (req, res) => {
     try {
-        console.log("Received Data:", req.body);
         const { name, email, password, phone, dob, gender, age, address, medical_history } = req.body;
 
         if (!name || !email || !password || !phone || !dob || !age || !gender || !address) {
@@ -42,67 +53,71 @@ router.post("/signup", async (req, res) => {
             return res.status(400).json({ message: "Email already registered!" });
         }
 
-        console.log("Received Password Before Saving:", password);
-
-        // ✅ Ensure medical_history is correctly formatted
-        const formattedMedicalHistory = Array.isArray(medical_history)
-            ? medical_history.filter(item => item.trim() !== '')  // Remove empty values
-            : medical_history ? [medical_history] : [];
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 12);
 
         // Save patient details
         const newPatient = new Patient({
-            _id: crypto.randomUUID(),
             name,
             email,
-            password,
+            password: hashedPassword,
             phone,
             dob,
             age,
             gender,
             address,
-            medical_history: formattedMedicalHistory,  // ✅ Corrected field
+            medical_history: Array.isArray(medical_history) ? medical_history.filter(item => item.trim() !== "") : [],
         });
 
         await newPatient.save();
 
-        res.status(201).json({ 
-            message: "Signup successful!", 
+        // Generate JWT Token
+        const token = jwt.sign(
+            { _id: newPatient._id, email: newPatient.email, name: newPatient.name },
+            process.env.JWT_SECRET,
+            { expiresIn: "1h" }
+        );
+
+        res.status(201).json({
+            message: "Signup successful!",
+            token,
             patient: {
-              _id: newPatient._id,  
-              name: newPatient.name,
-              email: newPatient.email
-            }
-          });
+                _id: newPatient._id,
+                name: newPatient.name,
+                email: newPatient.email,
+            },
+        });
     } catch (error) {
         console.error("Signup Error:", error);
-        res.status(500).json({ message: "Server Error. Please try again." });
+        res.status(500).json({ message: "Internal Server Error" });
     }
 });
 
 // ✅ Patient Login
 router.post("/login", async (req, res) => {
-    const { email, password } = req.body;
-    console.log("Login attempt with email:", email);
-
     try {
-        const patient = await Patient.findOne({ email });
-        console.log("Found patient:", patient);
+        const { email, password } = req.body;
 
+        const patient = await Patient.findOne({ email });
         if (!patient) {
             return res.status(400).json({ message: "User not found" });
         }
 
-        console.log("Checking password...");
-        console.log("Entered Password:", password);
-        const isMatch = await patient.matchPassword(password);
-        console.log("Password match result:", isMatch);
-
+        const isMatch = await bcrypt.compare(password, patient.password);
         if (!isMatch) {
             return res.status(400).json({ message: "Invalid credentials" });
         }
 
+        // Generate JWT Token
+        const token = jwt.sign(
+            { _id: patient._id, email: patient.email, name: patient.name },
+            process.env.JWT_SECRET,
+            { expiresIn: "1h" }
+        );
+
         res.json({
             message: "Login successful",
+            token,
             patient: {
                 _id: patient._id,
                 name: patient.name,
@@ -111,58 +126,62 @@ router.post("/login", async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Server error:", error);
-        res.status(500).json({ message: "Server error", error });
+        console.error("Login Error:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+// ✅ Get Patient Profile (Protected)
+router.get("/profile", verifyToken, async (req, res) => {
+    try {
+        const patient = await Patient.findById(req.patient._id).select("-password");
+        if (!patient) return res.status(404).json({ message: "Patient not found" });
+
+        res.json(patient);
+    } catch (error) {
+        console.error("Profile Fetch Error:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+// ✅ Get Specialist List
+router.get("/specialist_list", async (req, res) => {
+    try {
+        const { specialization } = req.query;
+
+        if (!specialization) {
+            return res.status(400).json({ message: "Specialization is required" });
+        }
+
+        const doctors = await Doctor.find({ specialization });
+
+        if (doctors.length === 0) {
+            return res.status(404).json({ message: "No doctors found for this specialization" });
+        }
+
+        res.json(doctors);
+    } catch (error) {
+        console.error("Error fetching specialist list:", error);
+        res.status(500).json({ message: "Internal Server Error" });
     }
 });
 
 
-// ✅ Specific route should come first
-router.get("/specialist_list", async (req, res) => {
+// ✅ Get Patient by ID (Protected)
+router.get("/:id", verifyToken, async (req, res) => {
     try {
-      const { specialization } = req.query;
-      console.log("Received specialization:", specialization);
-  
-      if (!specialization) {
-        return res.status(400).json({ message: "Specialization is required" });
-      }
-  
-      const doctors = await Doctor.find({ specialization });
-  
-      if (doctors.length === 0) {
-        return res.status(404).json({ message: "No doctors found for this specialization" });
-      }
-  
-      res.json(doctors);
+        const { id } = req.params;
+        const patient = await Patient.findById(id).select("-password");
+
+        if (!patient) {
+            return res.status(404).json({ message: "Patient not found" });
+        }
+
+        res.json(patient);
     } catch (error) {
-      console.error("Error fetching specialist list:", error);
-      res.status(500).json({ message: "Error fetching specialist list" });
+        console.error("Error fetching patient:", error);
+        res.status(500).json({ message: "Internal Server Error" });
     }
-  });
-  
-  // ✅ Dynamic patient route should be last
-  router.get("/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      console.log(`Fetching patient with ID: ${id}`);
-  
-      const patient = await Patient.findById(id).select("-password").lean();
-  
-      if (!patient) {
-        console.log(`No patient found with ID: ${id}`);
-        return res.status(404).json({ message: "Patient not found" });
-      }
-  
-      console.log("Found patient:", patient);
-      res.json(patient);
-    } catch (error) {
-      console.error("Error fetching patient:", error.message);
-      res.status(500).json({ message: "Server error", error: error.message });
-    }
-  });
-  
-  
-  
+});
 
 module.exports = router;
-

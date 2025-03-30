@@ -24,10 +24,8 @@ const PatientSignup = () => {
     setErrors({ ...errors, [e.target.name]: "" });
   };
 
-  
   const validateForm = () => {
     let newErrors = {};
-
     if (!formData.name.trim()) newErrors.name = "Full Name is required";
     if (!formData.email.includes("@")) newErrors.email = "Invalid email address";
     if (!/^\d{10}$/.test(formData.phone)) newErrors.phone = "Invalid phone number";
@@ -56,17 +54,22 @@ const PatientSignup = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          age: parseInt(formData.age), // Ensure age is a number
+          age: parseInt(formData.age), 
           medical_history: Array.isArray(formData.medical_history)
-            ? formData.medical_history.flat().filter(item => item.trim() !== '') // Flatten and remove empty values
-            : formData.medical_history.split(",").map(item => item.trim()).filter(item => item !== ''), // Convert string to array and remove empty values
+            ? formData.medical_history.flat().filter(item => item.trim() !== '')
+            : formData.medical_history.split(",").map(item => item.trim()).filter(item => item !== ''),
         }),
-        
       });
-  
+
       const result = await response.json();
+      
       if (response.ok) {
         alert("Signup Successful! Redirecting...");
+        
+        // Store JWT Token in Local Storage
+        localStorage.setItem("token", result.token);
+
+        // Redirect to Dashboard
         navigate("/patient-dashboard", { state: { patientId: result.patient._id } });
       } else {
         setError(result.message || "Signup failed. Try again.");
@@ -77,7 +80,6 @@ const PatientSignup = () => {
       setLoading(false);
     }
   };
-  
 
   return (
     <div className="max-w-lg mx-auto p-6">

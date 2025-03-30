@@ -1,17 +1,51 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import AddDoctorForm from "./AddDoctorForm";
+import  jwtDecode  from "jwt-decode";
+
 
 const DoctorsList = () => {
   const [doctors, setDoctors] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    fetchDoctors();
-  }, []);
+    const token = localStorage.getItem("adminToken");
 
-  const fetchDoctors = async () => {
+    if (!token) {
+      alert("Unauthorized access! Please log in.");
+      navigate("/admin-login");
+      return;
+    }
+
     try {
-      const response = await fetch("http://localhost:5000/api/doctors/viewdoctors");
+      const decodedToken = jwtDecode(token);
+      const currentTime = Date.now() / 1000; // Convert to seconds
+
+      if (decodedToken.exp < currentTime) {
+        alert("Session expired. Please log in again.");
+        localStorage.removeItem("adminToken");
+        navigate("/login");
+      } else {
+        fetchDoctors(token);
+      }
+    } catch (error) {
+      console.error("Invalid token", error);
+      localStorage.removeItem("adminToken");
+      navigate("/login");
+    }
+  }, [navigate]);
+
+  const fetchDoctors = async (token) => {
+    try {
+      const response = await fetch("http://localhost:5000/api/doctors/viewdoctors", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`, // Include JWT token
+          "Content-Type": "application/json",
+        },
+      });
+
       if (!response.ok) throw new Error("Failed to fetch doctors");
       const data = await response.json();
       setDoctors(data);

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Stethoscope, Brain, Heart, Bone, Eye, Ear, Baby, User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -8,7 +8,7 @@ const specialists = [
   { name: "General Physician", icon: <Stethoscope />, field: "General" },
   { name: "Neurologist", icon: <Brain />, field: "Neurology" },
   { name: "Cardiologist", icon: <Heart />, field: "Cardiology" },
-  { name: "Dentist", icon: <FontAwesomeIcon icon={faTooth} className="text-2xl mb-0 mt-0"/>, field: "Dentist" }, 
+  { name: "Dentist", icon: <FontAwesomeIcon icon={faTooth} className="text-2xl mb-0 mt-0" />, field: "Dentist" }, 
   { name: "Orthopedic", icon: <Bone />, field: "Orthopedics" },
   { name: "Ophthalmologist", icon: <Eye />, field: "Ophthalmology" },
   { name: "ENT Specialist", icon: <Ear />, field: "ENT" },
@@ -19,7 +19,22 @@ const specialists = [
 const Homepagepatient = ({ patientId }) => {
   const navigate = useNavigate();
 
+  // Check for JWT token on component mount
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login"); // Redirect to login if token is missing
+    }
+  }, [navigate]);
+
   const bookAppointment = (specialist) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Session expired. Please log in again.");
+      navigate("/login");
+      return;
+    }
+
     navigate(`/patient-dashboard/specialist`, { 
       state: { 
         patientId, 
@@ -28,8 +43,6 @@ const Homepagepatient = ({ patientId }) => {
       } 
     });
   };
-  
-  
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-8">
@@ -47,7 +60,6 @@ const Homepagepatient = ({ patientId }) => {
               className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
               onClick={() => bookAppointment(specialist)}
             >
-              
               Book Appointment
             </button>
           </div>

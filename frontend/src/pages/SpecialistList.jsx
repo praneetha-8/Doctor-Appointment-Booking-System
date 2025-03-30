@@ -8,79 +8,97 @@ const API_BASE_URL = "http://localhost:5000";
 const SpecialistList = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { patientId, specialistName, specialistField } = location.state || {};
+  const { specialistName, specialistField } = location.state || {};
+  const token = localStorage.getItem("token");
 
-  const [patientName, setPatientName] = useState("");
+  const patientString = localStorage.getItem("patient");
+  const patient = patientString ? JSON.parse(patientString) : null;
+  const patientId = patient?._id;
+  const patientName = patient?.name || "Unknown";
+
+  // Handle session expiration
+  useEffect(() => {
+    if (!token || !patientId || !patient) {
+      alert("Session expired. Please log in again.");
+      localStorage.clear();
+      navigate("/login");
+      return;
+    }
+  }, [token, patientId, patient, navigate]);
+
   const [doctors, setDoctors] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState("");
 
-  console.log("🔹 Component Mounted: SpecialistList");
-  console.log("🔹 Location State:", location.state);
-
-  // 🔍 Fetch Patient Name using Patient ID
   useEffect(() => {
-    if (patientId) {
-      axios
-        .get(`${API_BASE_URL}/api/patients/${patientId}`)
-        .then((response) => {
-          console.log("✅ Patient Details Fetched:", response.data);
-          setPatientName(response.data.name); // Assuming response contains { name: "John Doe" }
-        })
-        .catch((error) => {
-          console.error("❌ Error fetching patient details:", error);
-          setError("Failed to load patient details.");
-        });
+    if (!token) {
+      navigate("/login");
+      return;
     }
-  }, [patientId]);
+  }, [token, navigate]);
 
-  // 🔍 Fetch Specialist Doctors
+  const axiosInstance = axios.create({
+    baseURL: API_BASE_URL,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
   useEffect(() => {
     if (specialistField) {
-      console.log(`📢 Fetching doctors for specialization: ${specialistField}`);
-      axios
-        .get(`${API_BASE_URL}/api/patients/specialist_list?specialization=${specialistField}`)
+      axiosInstance
+        .get(`/api/patients/specialist_list?specialization=${specialistField}`)
         .then((response) => {
-          console.log("✅ Doctors Fetched Successfully:", response.data);
           setDoctors(response.data);
           setLoading(false);
         })
-        .catch((error) => {
-          console.error("❌ Error fetching doctors:", error);
-          setError(error.response?.status === 404 
-            ? `No doctors available for ${specialistName}.` 
-            : "Failed to fetch doctors. Please try again later.");
+        .catch((err) => {
+          setError(
+            err.response?.status === 404
+              ? `No doctors available for ${specialistName}.`
+              : "Failed to fetch doctors."
+          );
           setLoading(false);
         });
     }
   }, [specialistField]);
 
-  // 📅 Book Appointment
   const bookDoctor = (doctor) => {
+    if (!selectedDate || !doctor.time_slot) {
+      alert("Please select a valid date and ensure the doctor has available slots.");
+      return;
+    }
+
     const appointmentData = {
-      patient_id: patientId,  
-      doctor_name: doctor.name,  
-      patient_name: patientName,  // ✅ Use fetched patient name
-      specialization: specialistField,  
-      appointment_date: selectedDate,  
-      time_slot: doctor.time_slot,  
+      patient_id: patientId,
+      doctor_name: doctor.name,
+      patient_name: patientName,
+      specialization: specialistField,
+      appointment_date: selectedDate,
+      time_slot: doctor.time_slot,
       status: "Confirmed",
     };
 
-    axios
-      .post(`${API_BASE_URL}/api/appointments/book`, appointmentData)
-      .then((response) => {
-        console.log("✅ Appointment Booked Successfully:", response.data);
-        navigate("/patient-dashboard/specialist/booking-confirmed", { 
-          state: { patientId, patientName, doctor, selectedDate } 
-        });
-      })
-      .catch((error) => {
-        console.error("❌ Error booking appointment:", error);
-        setError(error.response?.data?.error || "Failed to book the appointment.");
-      });
+    console.log("Sending Appointment Data:", appointmentData);
+
+    axiosInstance
+      .post(`/api/appointments/book`, appointmentData)
+      .then(() =>
+        navigate("/patient-dashboard/specialist/booking-confirmed", {
+          state: { 
+            patientId, 
+            patientName, 
+            doctor, 
+            selectedDate, 
+            timeSlot: doctor.time_slot, // Fixed key name
+            specialization: specialistField 
+          },
+        })
+      )
+      .catch((err) =>
+        setError(err.response?.data?.error || "Failed to book the appointment.")
+      );
   };
 
   return (
@@ -93,20 +111,15 @@ const SpecialistList = () => {
         <div className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center text-center">
           <AlertCircle className="text-red-500 w-12 h-12 mb-4" />
           <p className="text-red-500 text-lg">{error}</p>
-          <button className="mt-4 flex items-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onClick={() => navigate(-1)}>
+          <button
+            className="mt-4 flex items-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            onClick={() => navigate(-1)}
+          >
             <ArrowLeft className="mr-2" /> Go Back
           </button>
         </div>
       ) : (
         <>
-          {/* Success Message */}
-          {successMessage && (
-            <div className="mb-4 bg-green-100 text-green-700 p-4 rounded-lg flex items-center">
-              <CheckCircle className="mr-2" /> {successMessage}
-            </div>
-          )}
-
-          {/* Date Picker */}
           <div className="mb-6 bg-white p-4 rounded-lg shadow-md">
             <label className="block text-lg font-medium mb-2 flex items-center">
               <Calendar className="mr-2" /> Select Appointment Date:
@@ -114,39 +127,29 @@ const SpecialistList = () => {
             <input
               type="date"
               value={selectedDate}
-              onChange={(e) => {
-                console.log("📅 Selected Date:", e.target.value);
-                setSelectedDate(e.target.value);
-              }}
+              onChange={(e) => setSelectedDate(e.target.value)}
               className="p-3 border rounded-lg w-full"
+              min={new Date().toISOString().split("T")[0]}
             />
           </div>
 
-          {/* Doctors List */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {doctors.map((doctor) => (
-              <div key={doctor._id} className="bg-white p-6 rounded-lg shadow flex flex-col items-center">
+              <div
+                key={doctor._id}
+                className="bg-white p-6 rounded-lg shadow flex flex-col items-center"
+              >
                 <h3 className="text-xl font-semibold">{doctor.name}</h3>
-
-                {/* Time Slot Section */}
-                <div className="mt-3 w-full">
-                  <p className="text-gray-500 text-lg font-medium">Available Time Slot:</p>
-                  {doctor.time_slot ? (
-                    <div className="bg-gray-100 p-3 rounded-lg shadow-md mt-2 text-center">
-                      <span className="bg-green-500 text-white px-4 py-2 rounded text-lg font-semibold">
-                        {doctor.time_slot}
-                      </span>
-                    </div>
-                  ) : (
-                    <p className="text-red-500 mt-2">No available time slot</p>
-                  )}
-                </div>
-
-                {/* Book Appointment Button */}
+                <p className="text-gray-500">Specialization: {doctor.specialization}</p>
+                <p className="text-gray-500">Time Slot: {doctor.time_slot || "N/A"}</p>
                 <button
-                  className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                  className={`mt-4 text-white px-4 py-2 rounded ${
+                    doctor.time_slot
+                      ? "bg-blue-600 hover:bg-blue-700"
+                      : "bg-gray-400 cursor-not-allowed"
+                  }`}
                   onClick={() => bookDoctor(doctor)}
-                  disabled={!selectedDate}
+                  disabled={!doctor.time_slot || !selectedDate}
                 >
                   Book Appointment
                 </button>
