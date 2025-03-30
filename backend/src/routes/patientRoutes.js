@@ -47,20 +47,17 @@ router.post("/signup", async (req, res) => {
             return res.status(400).json({ message: "All fields are required." });
         }
 
-        // Check if email already exists
         const existingPatient = await Patient.findOne({ email });
         if (existingPatient) {
             return res.status(400).json({ message: "Email already registered!" });
         }
 
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 12);
-
-        // Save patient details
+        // ✅ No need to hash password here (model already does it)
         const newPatient = new Patient({
+            _id: new mongoose.Types.ObjectId().toString(),
             name,
             email,
-            password: hashedPassword,
+            password, // 🚀 Mongoose model will hash this automatically
             phone,
             dob,
             age,
@@ -71,7 +68,11 @@ router.post("/signup", async (req, res) => {
 
         await newPatient.save();
 
-        // Generate JWT Token
+        // ✅ Fetch saved user to confirm stored password (Debugging)
+        const savedPatient = await Patient.findOne({ email });
+        console.log("Stored Password in DB:", savedPatient.password);
+
+        // ✅ Generate JWT Token
         const token = jwt.sign(
             { _id: newPatient._id, email: newPatient.email, name: newPatient.name },
             process.env.JWT_SECRET,
@@ -88,22 +89,29 @@ router.post("/signup", async (req, res) => {
             },
         });
     } catch (error) {
-        console.error("Signup Error:", error);
+        console.error("Signup Error:", error.message, error.stack);
         res.status(500).json({ message: "Internal Server Error" });
     }
 });
 
-// ✅ Patient Login
+
 router.post("/login", async (req, res) => {
     try {
         const { email, password } = req.body;
+        console.log("Email Entered:", email);
+        console.log("Password Entered:", password);
 
         const patient = await Patient.findOne({ email });
         if (!patient) {
             return res.status(400).json({ message: "User not found" });
         }
 
+        console.log("Stored Hashed Password:", patient.password); // Debugging
+
+        // Compare password using bcrypt
         const isMatch = await bcrypt.compare(password, patient.password);
+        console.log("Password Match:", isMatch); // Should print true if correct
+
         if (!isMatch) {
             return res.status(400).json({ message: "Invalid credentials" });
         }
@@ -130,6 +138,7 @@ router.post("/login", async (req, res) => {
         res.status(500).json({ message: "Internal Server Error" });
     }
 });
+
 
 // ✅ Get Patient Profile (Protected)
 router.get("/profile", verifyToken, async (req, res) => {

@@ -46,7 +46,13 @@ const PatientAppointments = () => {
         });
 
         console.log("🟢 API Response Data:", response.data);
-        setAppointments(response.data);
+        
+        if (response.data.length === 0) {
+          setError("No appointments found.");
+        } else {
+          setAppointments(response.data);
+        }
+
       } catch (err) {
         console.error("🔴 API Fetch Error:", err.response?.data?.message || err.message);
         setError(err.response?.data?.message || "Failed to load appointments. Please log in again.");
@@ -58,8 +64,14 @@ const PatientAppointments = () => {
     fetchAppointments();
   }, [navigate]);
 
-  if (loading) return <div className="text-center py-10">Loading...</div>;
-  if (error) return <div className="text-red-500 text-center py-10">{error}</div>;
+  if (loading) return <div className="text-center py-10 text-lg font-medium">Loading...</div>;
+  if (error) return (
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
+      
+      <h2 className="text-2xl font-bold text-gray-700">{error}</h2>
+      <p className="text-gray-500 text-sm mt-2">Please check again later or contact support.</p>
+    </div>
+  );
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -86,7 +98,10 @@ const PatientAppointments = () => {
             ))}
           </ul>
         ) : (
-          <p className="text-gray-500">No upcoming appointments.</p>
+          <div className="flex flex-col items-center">
+            
+            <p className="text-gray-500">You have no upcoming appointments.</p>
+          </div>
         )}
       </div>
 
@@ -105,7 +120,10 @@ const PatientAppointments = () => {
             ))}
           </ul>
         ) : (
-          <p className="text-gray-500">No previous appointments.</p>
+          <div className="flex flex-col items-center">
+            
+            <p className="text-gray-500">No previous appointments found.</p>
+          </div>
         )}
       </div>
     </div>

@@ -96,7 +96,7 @@ router.get("/:patientId", authenticateUser, async (req, res) => {
     const appointments = await Appointment.find({ patient_id: patientId });
 
     if (!appointments.length) {
-      return res.status(404).json({ message: "No appointments found for this patient" });
+      return res.status(404).json({ message: "No appointments found" });
     }
 
     res.json(appointments);

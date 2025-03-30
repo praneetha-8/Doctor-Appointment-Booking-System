@@ -42,44 +42,50 @@ const PatientSignup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Signup button clicked");  // ✅ Debug log
+
     setError("");
     setErrors({});
-  
-    if (!validateForm()) return;
-  
+
+    if (!validateForm()) {
+        console.log("Form validation failed", errors);  // ✅ Debug log
+        return;
+    }
+
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/patients/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          age: parseInt(formData.age), 
-          medical_history: Array.isArray(formData.medical_history)
-            ? formData.medical_history.flat().filter(item => item.trim() !== '')
-            : formData.medical_history.split(",").map(item => item.trim()).filter(item => item !== ''),
-        }),
-      });
+        console.log("Sending request to backend...");  // ✅ Debug log
+        const response = await fetch("http://localhost:5000/api/patients/signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                ...formData,
+                age: parseInt(formData.age),
+                medical_history: Array.isArray(formData.medical_history)
+                    ? formData.medical_history.flat().filter(item => item.trim() !== '')
+                    : formData.medical_history.split(",").map(item => item.trim()).filter(item => item !== ''),
+            }),
+        });
 
-      const result = await response.json();
-      
-      if (response.ok) {
-        alert("Signup Successful! Redirecting...");
-        
-        // Store JWT Token in Local Storage
-        localStorage.setItem("token", result.token);
+        const result = await response.json();
+        console.log("Response received:", result);  // ✅ Debug log
 
-        // Redirect to Dashboard
-        navigate("/patient-dashboard", { state: { patientId: result.patient._id } });
-      } else {
-        setError(result.message || "Signup failed. Try again.");
-      }
+        if (response.ok) {
+            alert("Signup Successful! Redirecting...");
+            localStorage.setItem("token", result.token);
+            localStorage.setItem("patient", JSON.stringify(result.patient));
+            navigate("/patient-dashboard", { state: { patientId: result.patient._id } });
+        } else {
+            setError(result.message || "Signup failed. Try again.");
+        }
     } catch (err) {
-      setError("Server error. Please try again.");
+        console.error("Fetch error:", err);  // ✅ Debug log
+        setError("Server error. Please try again.");
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
+
 
   return (
     <div className="max-w-lg mx-auto p-6">
@@ -91,7 +97,7 @@ const PatientSignup = () => {
           <input key={field} type="text" name={field} placeholder={field} value={formData[field]}
             onChange={handleChange} className="w-full p-2 border rounded" required />
         ))}
-
+        
         <input type="number" name="age" placeholder="Age" value={formData.age}
         onChange={handleChange} className="w-full p-2 border rounded" required />
 
