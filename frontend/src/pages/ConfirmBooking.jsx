@@ -51,7 +51,7 @@ const BookingConfirmed = () => {
           <p>Time: {timeSlot}</p>
         </div>
 
-        <button className="mt-6 bg-blue-600 text-white px-4 py-2 rounded" onClick={() => navigate("/")}>
+        <button className="mt-6 bg-blue-600 text-white px-4 py-2 rounded" onClick={() => navigate("/patient-dashboard")}>
           <Home className="mr-2" /> Go to Home
         </button>
       </div>

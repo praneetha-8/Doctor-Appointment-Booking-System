@@ -5,13 +5,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTooth } from "@fortawesome/free-solid-svg-icons";
 
 const specialists = [
-  { name: "General Physician", icon: <Stethoscope />, field: "General" },
-  { name: "Neurologist", icon: <Brain />, field: "Neurology" },
-  { name: "Cardiologist", icon: <Heart />, field: "Cardiology" },
+  { name: "General Physician", icon: <Stethoscope />, field: "General Physician" },
+  { name: "Neurologist", icon: <Brain />, field: "Neurologist" },
+  { name: "Cardiologist", icon: <Heart />, field: "Cardiologist" },
   { name: "Dentist", icon: <FontAwesomeIcon icon={faTooth} className="text-2xl mb-0 mt-0" />, field: "Dentist" }, 
-  { name: "Orthopedic", icon: <Bone />, field: "Orthopedics" },
-  { name: "Ophthalmologist", icon: <Eye />, field: "Ophthalmology" },
-  { name: "ENT Specialist", icon: <Ear />, field: "ENT" },
+  { name: "Orthopedic", icon: <Bone />, field: "Orthopedic Surgeon" },
+  { name: "Ophthalmologist", icon: <Eye />, field: "Ophthalmologist" },
+  { name: "ENT Specialist", icon: <Ear />, field: "ENT Specialist" },
   { name: "Pediatrician", icon: <Baby />, field: "Pediatrician" },
   { name: "Dermatologist", icon: <User />, field: "Dermatologist" },
 ];

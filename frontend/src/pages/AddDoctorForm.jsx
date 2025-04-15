@@ -11,6 +11,7 @@ const specializations = [
   "Psychiatrist",
   "Ophthalmologist",
   "Dentist",
+  "ENT Specialist"
 ];
 
 const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
