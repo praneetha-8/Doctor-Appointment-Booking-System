@@ -20,9 +20,6 @@ const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
     specialization: "",
     email: "",
     phone: "",
-    start_time: "",
-    end_time: "",
-    time_slot: "", // ✅ Included in state
   });
 
   const handleAddDoctor = async (e) => {
@@ -42,7 +39,7 @@ const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify(newDoctor), // ✅ No need to manually add `time_slot`
+        body: JSON.stringify({ ...newDoctor, time_slots: [] }), // Changed from time_slot to time_slots
       });
 
       if (!response.ok) {
@@ -102,39 +99,7 @@ const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
             required
             className="border p-2 w-full mb-2"
           />
-
-          <label className="block text-gray-700 text-sm font-bold mb-1">Start Time</label>
-          <input
-            type="time"
-            value={newDoctor.start_time}
-            onChange={(e) => {
-              const start_time = e.target.value;
-              setNewDoctor({ 
-                ...newDoctor, 
-                start_time, 
-                time_slot: `${start_time} - ${newDoctor.end_time}` // ✅ Updates `time_slot`
-              });
-            }}
-            required
-            className="border p-2 w-full mb-2"
-          />
-
-          <label className="block text-gray-700 text-sm font-bold mb-1">End Time</label>
-          <input
-            type="time"
-            value={newDoctor.end_time}
-            onChange={(e) => {
-              const end_time = e.target.value;
-              setNewDoctor({ 
-                ...newDoctor, 
-                end_time, 
-                time_slot: `${newDoctor.start_time} - ${end_time}` // ✅ Updates `time_slot`
-              });
-            }}
-            required
-            className="border p-2 w-full mb-2"
-          />
-
+          
           <div className="flex justify-between">
             <button className="bg-green-500 text-white px-4 py-2 rounded" type="submit">
               Save Doctor

@@ -9,7 +9,7 @@ import PatientDashboard from './pages/PatientDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import SpecialistList from './pages/SpecialistList'
 import BookingConfirmed from './pages/ConfirmBooking'
-
+import DoctorDashboard from './pages/Doctordashboard'
 
 
 const App = () => {
@@ -25,6 +25,7 @@ const App = () => {
         <Route path="/admin_dashboard" element={<AdminDashboard />} />
         <Route path="/patient-dashboard/specialist" element={<SpecialistList />} />
         <Route path="/patient-dashboard/specialist/booking-confirmed" element={<BookingConfirmed />} />
+        <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
         
         
         
