@@ -7,7 +7,6 @@ const BookingConfirmed = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Extracting data passed from the previous page
   const {
     patientName = "Unknown",
     doctor = {},
@@ -16,7 +15,6 @@ const BookingConfirmed = () => {
     specialization = "N/A"
   } = location.state || {};
 
-  // Function to handle session expiration
   const redirectToLogin = () => {
     alert("Session expired. Please log in again.");
     localStorage.clear();
@@ -30,19 +28,47 @@ const BookingConfirmed = () => {
     try {
       const decodedToken = jwtDecode(token);
       if (decodedToken.exp < Date.now() / 1000) return redirectToLogin();
+
+      // ✅ Send confirmation email after booking
+      sendConfirmationEmail();
     } catch (error) {
       console.error("Invalid token", error);
       return redirectToLogin();
     }
   }, [navigate]);
 
-  // Format the date to be more readable
   const formatDate = (dateString) => {
     try {
       const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
       return new Date(dateString).toLocaleDateString(undefined, options);
     } catch (error) {
       return dateString;
+    }
+  };
+
+  const sendConfirmationEmail = async () => {
+    try {
+      const patientData = localStorage.getItem("patient");
+      const parsedPatient = patientData ? JSON.parse(patientData) : null;
+      const toEmail = parsedPatient?.email || "user@example.com";  // safer parsing
+
+      await fetch("http://localhost:5000/api/email/send-confirmation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          patientName,
+          doctorName: doctor.name || "Unknown",
+          specialization: doctor.specialization || specialization,
+          selectedDate,
+          timeSlot,
+          toEmail,
+        }),
+      });
+      console.log("📧 Confirmation email sent to", toEmail);
+    } catch (err) {
+      console.error("❌ Failed to send confirmation email", err);
     }
   };
 
@@ -54,10 +80,10 @@ const BookingConfirmed = () => {
             <CheckCircle className="text-green-500 w-12 h-12" />
           </div>
         </div>
-        
+
         <h1 className="text-2xl font-bold text-green-600 mb-2">Booking Confirmed!</h1>
         <p className="text-gray-600 mb-6">Your appointment has been successfully scheduled.</p>
-        
+
         <div className="bg-gray-50 p-6 rounded-lg shadow-inner mb-6">
           <div className="flex items-start mb-4">
             <User className="text-blue-500 mr-3 mt-1 flex-shrink-0" size={18} />
@@ -66,7 +92,7 @@ const BookingConfirmed = () => {
               <p className="font-medium">{patientName}</p>
             </div>
           </div>
-          
+
           <div className="flex items-start mb-4">
             <Stethoscope className="text-blue-500 mr-3 mt-1 flex-shrink-0" size={18} />
             <div>
@@ -75,7 +101,7 @@ const BookingConfirmed = () => {
               <p className="text-sm text-gray-600">{doctor.specialization || specialization}</p>
             </div>
           </div>
-          
+
           <div className="flex items-start mb-4">
             <Calendar className="text-blue-500 mr-3 mt-1 flex-shrink-0" size={18} />
             <div>
@@ -83,7 +109,7 @@ const BookingConfirmed = () => {
               <p className="font-medium">{formatDate(selectedDate)}</p>
             </div>
           </div>
-          
+
           <div className="flex items-start">
             <Clock className="text-blue-500 mr-3 mt-1 flex-shrink-0" size={18} />
             <div>
@@ -92,7 +118,7 @@ const BookingConfirmed = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="flex justify-center space-x-4">
           <button 
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition-colors flex items-center"
@@ -100,13 +126,8 @@ const BookingConfirmed = () => {
           >
             <Home className="mr-2" size={18} /> Dashboard
           </button>
+
           
-          <button 
-            className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2 rounded-lg transition-colors"
-            onClick={() => navigate("/patient-dashboard/appointments")}
-          >
-            View Appointments
-          </button>
         </div>
       </div>
     </div>

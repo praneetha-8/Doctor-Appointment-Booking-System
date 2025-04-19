@@ -15,13 +15,16 @@ const PatientDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeSection, setActiveSection] = useState("home");
+  const [isChatOpen, setIsChatOpen] = useState(false); // Chat toggle
+  const [messages, setMessages] = useState([]); // Store messages
+  const [userMessage, setUserMessage] = useState(""); // User's message
 
   useEffect(() => {
     const fetchPatientData = async () => {
       const token = localStorage.getItem("token");
 
       if (!token) {
-        navigate("/patient-login"); // Redirect to login if not authenticated
+        navigate("/patient-login");
         return;
       }
 
@@ -32,7 +35,6 @@ const PatientDashboard = () => {
         setPatient(response.data);
       } catch (err) {
         console.error("🔴 Error fetching patient data:", err.response?.data || err.message);
-        
         if (err.response?.status === 401) {
           console.warn("⚠️ Unauthorized! Redirecting to login...");
           localStorage.removeItem("token");
@@ -43,11 +45,60 @@ const PatientDashboard = () => {
       } finally {
         setLoading(false);
       }
-      
     };
 
     fetchPatientData();
   }, [navigate]);
+
+  // const handleSendMessage = async () => {
+  //   if (!userMessage.trim()) return;
+
+  //   // Add user's message to the state
+  //   setMessages((prevMessages) => [
+  //     ...prevMessages,
+  //     { sender: "user", text: userMessage },
+  //   ]);
+
+  //   try {
+  //     const response = await axios.post(`${API_BASE_URL}/api/chatbot/message`, { message: userMessage });
+
+  //     // Add chatbot response to the messages state
+  //     setMessages((prevMessages) => [
+  //       ...prevMessages,
+  //       { sender: "chatbot", text: response.data.message },
+  //     ]);
+
+  //     // Clear the input field
+  //     setUserMessage("");
+  //   } catch (err) {
+  //     console.error("Error sending message:", err);
+  //   }
+  // };
+  const handleSendMessage = async () => {
+    if (!userMessage.trim()) return;
+
+    // Add the user's message to the state
+    setMessages((prevMessages) => [
+      ...prevMessages,
+      { sender: "user", text: userMessage },
+    ]);
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/chatbot/message`, { message: userMessage });
+
+      // Add chatbot response to the messages state
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { sender: "chatbot", text: response.data.message },
+      ]);
+
+      // Clear the input field
+      setUserMessage("");
+    } catch (err) {
+      console.error("Error sending message:", err);
+    }
+};
+
 
   if (loading) return <div className="text-center py-10">Loading...</div>;
   if (error) return <div className="text-red-500 text-center py-10">{error}</div>;
@@ -92,7 +143,7 @@ const PatientDashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 bg-gray-100 p-8">
+      <div className="flex-1 bg-gray-100 p-8 relative">
         {activeSection === "home" && (
           <div>
             <h1 className="text-3xl font-bold mb-6">Welcome, {patient?.name}</h1>
@@ -105,10 +156,45 @@ const PatientDashboard = () => {
         {activeSection === "appointments" && <PatientAppointments patientId={patient?._id} />}
         {activeSection === "profile" && <Profile patient={patient} />}
         {activeSection === "logout" && <Logout />}
+
+        {/* Chatbot UI */}
+        {isChatOpen && (
+          <div className="fixed bottom-20 right-6 w-80 h-96 bg-white rounded-xl shadow-xl p-4 flex flex-col z-50">
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-lg font-semibold">Chatbot</h2>
+              <button onClick={() => setIsChatOpen(false)} className="text-gray-500 hover:text-black text-lg">✖</button>
+            </div>
+            <div className="flex-1 overflow-y-auto bg-gray-100 p-3 rounded mb-2">
+              {messages.map((msg, index) => (
+                <div key={index} className={`mb-2 ${msg.sender === "chatbot" ? "text-blue-500" : "text-gray-700"}`}>
+                  <p className="text-sm">{msg.text}</p>
+                </div>
+              ))}
+            </div>
+            <div>
+              <input
+                type="text"
+                value={userMessage}
+                onChange={(e) => setUserMessage(e.target.value)}
+                placeholder="Type your message..."
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-none"
+              />
+              <button
+                onClick={handleSendMessage}
+                className="w-full bg-blue-600 text-white p-2 rounded mt-2"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Chatbot Button */}
-      <button className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700">
+      <button
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 z-50"
+      >
         <MessageCircle size={24} />
       </button>
     </div>

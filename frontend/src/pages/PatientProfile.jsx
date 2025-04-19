@@ -53,7 +53,7 @@ const Profile = ({ patient: propPatient }) => {
         <div>
           <p><strong>Gender:</strong> {patient?.gender}</p>
           <p><strong>Address:</strong> {patient?.address}</p>
-          <p><strong>Blood Group:</strong> {patient?.bloodGroup}</p>
+          
         </div>
       </div>
     </div>

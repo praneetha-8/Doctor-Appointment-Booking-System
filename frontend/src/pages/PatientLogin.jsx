@@ -38,7 +38,16 @@ const PatientLogin = () => {
   };
 
   return (
+    
     <div className="min-h-screen w-full flex items-center justify-center p-4">
+      <div className="absolute top-4 left-4">
+      <button
+        onClick={() => navigate("/")}
+        className="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md shadow"
+      >
+        ⬅ Back to Home
+      </button>
+      </div>
       <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-8">Patient Login</h2>
 

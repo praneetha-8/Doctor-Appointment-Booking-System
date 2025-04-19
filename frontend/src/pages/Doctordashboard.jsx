@@ -1,16 +1,24 @@
-import React, { useEffect, useState } from 'react';
-import { Home, User, LogOut, Trash2, Calendar, Clock } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import {
+  Home,
+  User,
+  LogOut,
+  Trash2,
+  Calendar,
+  Clock,
+  CheckCircle,
+} from "lucide-react";
 
 const DoctorDashboard = () => {
-  const [activeSection, setActiveSection] = useState('home');
+  const [activeSection, setActiveSection] = useState("home");
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState('');
-  const [newSlot, setNewSlot] = useState({ start: '', end: '' });
+  const [selectedDate, setSelectedDate] = useState("");
+  const [newSlot, setNewSlot] = useState({ start: "", end: "" });
   const [doctor, setDoctor] = useState(null);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchDoctorData = async () => {
@@ -22,20 +30,23 @@ const DoctorDashboard = () => {
       }
 
       try {
-        const response = await fetch(`http://localhost:5000/api/doctors/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        
+        const response = await fetch(
+          `http://localhost:5000/api/doctors/profile`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
         if (!response.ok) {
           throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
-        
+
         const data = await response.json();
         setDoctor(data);
       } catch (err) {
         console.error("🔴 Error fetching doctor data:", err.message);
 
-        if (err.message.includes('401')) {
+        if (err.message.includes("401")) {
           console.warn("⚠️ Unauthorized! Redirecting to login...");
           localStorage.removeItem("token");
           window.location.href = "/doctor-login";
@@ -54,28 +65,29 @@ const DoctorDashboard = () => {
   useEffect(() => {
     const fetchAppointments = async () => {
       if (!selectedDate || !doctor) return;
-      
+
       const token = localStorage.getItem("token");
-      const doctorId = localStorage.getItem('doctorId'); // Or wherever you're storing it
-      
+
       if (!token) return;
-      
+
       try {
         setAppointmentsLoading(true);
-        
-        // Simpler URL structure without encoding the doctor name
-        const response = await fetch(`http://localhost:5000/api/doctors/appointments?date=${selectedDate}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,  // token from login
-            'Content-Type': 'application/json'
+
+        const response = await fetch(
+          `http://localhost:5000/api/doctors/appointments?date=${selectedDate}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
           }
-        });
-        
+        );
+
         if (!response.ok) {
           throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
-        
+
         const data = await response.json();
         setAppointments(data);
       } catch (err) {
@@ -95,8 +107,8 @@ const DoctorDashboard = () => {
 
   const formatDate = (date) => {
     const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
 
@@ -107,124 +119,189 @@ const DoctorDashboard = () => {
   };
 
   const handleAddSlot = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return console.error('No token found');
-  
+    const token = localStorage.getItem("token");
+    if (!token) return console.error("No token found");
+
     if (!selectedDate || !newSlot.start || !newSlot.end) {
-      return alert('Please select a date and enter both start and end times.');
+      return alert("Please select a date and enter both start and end times.");
     }
-  
+
     const slotTime = `${newSlot.start} - ${newSlot.end}`;
-    
+    console.log(slotTime);
+    // Check if slot already exists for this date
+    const existingSlots = getSlotsForSelectedDate();
+    const slotExists = existingSlots.some((slot) => slot.time === slotTime);
+
+    if (slotExists) {
+      return alert("This time slot already exists for the selected date.");
+    }
+
     try {
-      const response = await fetch('http://localhost:5000/api/doctors/add-timeslot', {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          date: selectedDate, 
-          slots: [{ time: slotTime, status: 'free' }]  // Now sending objects with time and status
-        })
-      });
-      
+      const response = await fetch(
+        "http://localhost:5000/api/doctors/add-timeslot",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            date: selectedDate,
+            slots: [{ time: slotTime, status: "free" }],
+          }),
+        }
+      );
+
+      // Rest of the function remains the same...
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to add slot');
+        throw new Error(errorData.message || "Failed to add slot");
       }
-  
+
       // Update doctor state with new data
-      setDoctor(prev => {
+      setDoctor((prev) => {
         const updatedTimeSlots = [...(prev.time_slots || [])];
-        const existingSlotIndex = updatedTimeSlots.findIndex(ts => ts.date === selectedDate);
-        
+        const existingSlotIndex = updatedTimeSlots.findIndex(
+          (ts) => ts.date === selectedDate
+        );
+
         if (existingSlotIndex >= 0) {
           // Update existing date entry
           updatedTimeSlots[existingSlotIndex] = {
             ...updatedTimeSlots[existingSlotIndex],
-            slots: [...updatedTimeSlots[existingSlotIndex].slots, { time: slotTime, status: 'free' }]
+            slots: [
+              ...updatedTimeSlots[existingSlotIndex].slots,
+              { time: slotTime, status: "free" },
+            ],
           };
         } else {
           // Add new date entry
           updatedTimeSlots.push({
             date: selectedDate,
-            slots: [{ time: slotTime, status: 'free' }]
+            slots: [{ time: slotTime, status: "free" }],
           });
         }
-        
+
         return {
           ...prev,
-          time_slots: updatedTimeSlots
+          time_slots: updatedTimeSlots,
         };
       });
-      
+
       // Reset form
-      setNewSlot({ start: '', end: '' });
-      alert('Slot added successfully!');
+      setNewSlot({ start: "", end: "" });
+      alert("Slot added successfully!");
     } catch (error) {
-      console.error('Error adding time slot:', error.message);
-      alert(error.message || 'Something went wrong');
+      console.error("Error adding time slot:", error.message);
+      alert(error.message || "Something went wrong");
     }
   };
 
   const handleDeleteSlot = async (slotTime) => {
-    const token = localStorage.getItem('token');
-    if (!token) return console.error('No token found');
-    
+    const token = localStorage.getItem("token");
+    if (!token) return console.error("No token found");
+
     try {
-      const response = await fetch('http://localhost:5000/api/doctors/delete-slot', {
-        method: 'DELETE',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ date: selectedDate, slotTime: slotTime })
-      });
-      
+      const response = await fetch(
+        "http://localhost:5000/api/doctors/delete-slot",
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ date: selectedDate, slotTime: slotTime }),
+        }
+      );
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete slot');
+        throw new Error(errorData.message || "Failed to delete slot");
       }
-      
+
       // Update local state
-      setDoctor(prev => {
+      setDoctor((prev) => {
         const updatedTimeSlots = [...(prev.time_slots || [])];
-        const dateIndex = updatedTimeSlots.findIndex(ts => ts.date === selectedDate);
-        
+        const dateIndex = updatedTimeSlots.findIndex(
+          (ts) => ts.date === selectedDate
+        );
+
         if (dateIndex >= 0) {
           // Remove the specific slot by matching time property
-          updatedTimeSlots[dateIndex].slots = updatedTimeSlots[dateIndex].slots
-            .filter(slot => slot.time !== slotTime);
-            
+          updatedTimeSlots[dateIndex].slots = updatedTimeSlots[
+            dateIndex
+          ].slots.filter((slot) => slot.time !== slotTime);
+
           // If no slots left, remove the date entry
           if (updatedTimeSlots[dateIndex].slots.length === 0) {
             updatedTimeSlots.splice(dateIndex, 1);
           }
         }
-        
+
         return {
           ...prev,
-          time_slots: updatedTimeSlots
+          time_slots: updatedTimeSlots,
         };
       });
-      
-      alert('Slot deleted successfully!');
+
+      alert("Slot deleted successfully!");
     } catch (error) {
-      console.error('Error deleting slot:', error.message);
-      alert(error.message || 'Failed to delete slot');
+      console.error("Error deleting slot:", error.message);
+      alert(error.message || "Failed to delete slot");
+    }
+  };
+
+  // New function to mark an appointment as completed
+  const handleCompleteAppointment = async (appointmentId) => {
+    const token = localStorage.getItem("token");
+    if (!token) return console.error("No token found");
+
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/doctors/appointments/complete/${appointmentId}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log(response);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || "Failed to update appointment status"
+        );
+      }
+
+
+      // Update the local appointments state
+      setAppointments((prevAppointments) =>
+        prevAppointments.map((appointment) =>
+          appointment._id === appointmentId
+            ? { ...appointment, status: "Completed" }
+            : appointment
+        )
+      );
+
+      alert("Appointment marked as completed!");
+    } catch (error) {
+      console.error("Error completing appointment:", error.message);
+      alert(error.message || "Failed to mark appointment as completed");
     }
   };
 
   const handleLogout = () => {
     localStorage.clear();
-    window.location.href = '/doctor-login';
+    window.location.href = "/doctor-login";
   };
 
   // Check if a date has appointments
   const hasAppointmentsOnDate = (dateStr) => {
     if (!doctor) return false;
-    
+
     // This is a placeholder - in a real app, you'd check from a pre-fetched list of dates with appointments
     // For now, we'll just check if the date matches the selected date with appointments
     return selectedDate === dateStr && appointments.length > 0;
@@ -250,7 +327,9 @@ const DoctorDashboard = () => {
         {[...Array(days)].map((_, i) => {
           const date = new Date(year, month, i + 1);
           const formatted = formatDate(date);
-          const isSlotDay = doctor?.time_slots?.some((ts) => ts.date === formatted);
+          const isSlotDay = doctor?.time_slots?.some(
+            (ts) => ts.date === formatted
+          );
           const isToday = formatDate(new Date()) === formatted;
           const hasAppointments = hasAppointmentsOnDate(formatted);
 
@@ -260,12 +339,12 @@ const DoctorDashboard = () => {
               onClick={() => setSelectedDate(formatted)}
               className={`p-2 rounded border text-center relative ${
                 selectedDate === formatted
-                  ? 'bg-blue-500 text-white'
+                  ? "bg-blue-500 text-white"
                   : isSlotDay
-                  ? 'bg-green-100'
+                  ? "bg-green-100"
                   : isToday
-                  ? 'border-blue-500'
-                  : 'bg-white'
+                  ? "border-blue-500"
+                  : "bg-white"
               }`}
             >
               {i + 1}
@@ -280,7 +359,11 @@ const DoctorDashboard = () => {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        Loading...
+      </div>
+    );
   }
 
   return (
@@ -289,17 +372,17 @@ const DoctorDashboard = () => {
         <div className="text-xl font-bold mb-6">Medico</div>
         <nav className="space-y-4">
           <button
-            onClick={() => setActiveSection('home')}
+            onClick={() => setActiveSection("home")}
             className={`flex items-center w-full p-3 rounded ${
-              activeSection === 'home' ? 'bg-blue-700' : 'hover:bg-blue-500'
+              activeSection === "home" ? "bg-blue-700" : "hover:bg-blue-500"
             }`}
           >
             <Home className="mr-3" /> Home
           </button>
           <button
-            onClick={() => setActiveSection('profile')}
+            onClick={() => setActiveSection("profile")}
             className={`flex items-center w-full p-3 rounded ${
-              activeSection === 'profile' ? 'bg-blue-700' : 'hover:bg-blue-500'
+              activeSection === "profile" ? "bg-blue-700" : "hover:bg-blue-500"
             }`}
           >
             <User className="mr-3" /> Profile
@@ -314,10 +397,10 @@ const DoctorDashboard = () => {
       </div>
 
       <div className="flex-1 bg-gray-100 p-8">
-        {activeSection === 'home' && (
+        {activeSection === "home" && (
           <div>
             <h2 className="text-2xl font-bold mb-4">
-              Welcome, {doctor?.name || '...'}
+              Welcome, {doctor?.name || "..."}
             </h2>
 
             <div className="flex justify-between items-center mb-2">
@@ -336,7 +419,7 @@ const DoctorDashboard = () => {
                 Prev
               </button>
               <h3 className="text-xl font-semibold">
-                {currentMonth.toLocaleString('default', { month: 'long' })}{' '}
+                {currentMonth.toLocaleString("default", { month: "long" })}{" "}
                 {currentMonth.getFullYear()}
               </h3>
               <button
@@ -369,26 +452,38 @@ const DoctorDashboard = () => {
                     {getSlotsForSelectedDate().length > 0 ? (
                       <ul className="mt-2 space-y-2">
                         {getSlotsForSelectedDate().map((slot, idx) => (
-                          <li key={idx} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                          <li
+                            key={idx}
+                            className="flex justify-between items-center bg-gray-50 p-2 rounded"
+                          >
                             <span>{slot.time}</span>
-                            <span className={`text-xs px-2 py-1 rounded ${
-                              slot.status === 'free' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                            }`}>
+                            <span
+                              className={`text-xs px-2 py-1 rounded ${
+                                slot.status === "free"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
                               {slot.status}
                             </span>
-                            <button 
-                              onClick={() => handleDeleteSlot(slot.time)}
-                              className="text-red-500 hover:text-red-700"
-                              disabled={slot.status === 'booked'}
-                              title={slot.status === 'booked' ? "Cannot delete booked slots" : "Delete slot"}
-                            >
-                              <Trash2 size={16} />
-                            </button>
+
+                            {/* Only show delete button for free slots */}
+                            {slot.status === "free" && (
+                              <button
+                                onClick={() => handleDeleteSlot(slot.time)}
+                                className="text-red-500 hover:text-red-700"
+                                title="Delete slot"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <p className="mt-1 text-gray-500">No slots added for this day yet.</p>
+                      <p className="mt-1 text-gray-500">
+                        No slots added for this day yet.
+                      </p>
                     )}
                   </div>
 
@@ -396,22 +491,36 @@ const DoctorDashboard = () => {
                     <h5 className="font-medium mb-2">Add New Time Slot</h5>
                     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Start Time</label>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Start Time
+                        </label>
                         <input
                           type="time"
                           className="p-2 border rounded w-full"
                           value={newSlot.start}
-                          onChange={(e) => setNewSlot(prev => ({ ...prev, start: e.target.value }))}
+                          onChange={(e) =>
+                            setNewSlot((prev) => ({
+                              ...prev,
+                              start: e.target.value,
+                            }))
+                          }
                           required
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">End Time</label>
+                        <label className="block text-sm font-medium text-gray-700">
+                          End Time
+                        </label>
                         <input
                           type="time"
                           className="p-2 border rounded w-full"
                           value={newSlot.end}
-                          onChange={(e) => setNewSlot(prev => ({ ...prev, end: e.target.value }))}
+                          onChange={(e) =>
+                            setNewSlot((prev) => ({
+                              ...prev,
+                              end: e.target.value,
+                            }))
+                          }
                           required
                         />
                       </div>
@@ -431,7 +540,7 @@ const DoctorDashboard = () => {
                     <Calendar className="mr-2" size={18} />
                     Appointments: {selectedDate}
                   </h4>
-                  
+
                   {appointmentsLoading ? (
                     <div className="flex justify-center items-center p-4">
                       <p>Loading appointments...</p>
@@ -441,16 +550,45 @@ const DoctorDashboard = () => {
                       {appointments.map((appointment) => (
                         <div key={appointment._id} className="py-3">
                           <div className="flex justify-between">
-                            <span className="font-medium">{appointment.patient_name}</span>
-                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                            <span className="font-medium">
+                              {appointment.patient_name}
+                            </span>
+                            <span
+                              className={`text-xs px-2 py-1 rounded ${
+                                appointment.status === "completed"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-blue-100 text-blue-800"
+                              }`}
+                            >
                               {appointment.status}
                             </span>
                           </div>
                           <div className="text-sm text-gray-600 mt-1">
                             <div>Time: {appointment.time_slot}</div>
-                            <div>Date: {formatAppointmentDate(appointment.appointment_date)}</div>
-                            
+                            <div>
+                              Date:{" "}
+                              {formatAppointmentDate(
+                                appointment.appointment_date
+                              )}
+                            </div>
                           </div>
+
+                          {/* Complete Appointment Button */}
+                          {appointment.status === "Confirmed"  &&(
+                            <div className="mt-2">
+                              <button
+                                onClick={() =>
+                                  handleCompleteAppointment(appointment._id)
+                                }
+                                className="flex items-center bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+                              >
+                                 Mark
+                                as Completed
+                              </button>
+                            </div>
+                          )}
+
+
                         </div>
                       ))}
                     </div>
@@ -465,7 +603,7 @@ const DoctorDashboard = () => {
           </div>
         )}
 
-        {activeSection === 'profile' && (
+        {activeSection === "profile" && (
           <div className="bg-white p-6 rounded shadow">
             <h2 className="text-2xl font-bold mb-4">Doctor Profile</h2>
             <div className="space-y-2">

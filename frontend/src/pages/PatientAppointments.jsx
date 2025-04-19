@@ -11,6 +11,10 @@ const PatientAppointments = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [patientId, setPatientId] = useState(null);
+  const [patientEmail, setPatientEmail] = useState("");
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [appointmentToCancel, setAppointmentToCancel] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -35,8 +39,17 @@ const PatientAppointments = () => {
           });
           localPatientId = profileRes.data._id;
           localStorage.setItem("patient", JSON.stringify(profileRes.data));
-        }
 
+          localPatientId = profileRes.data._id;
+          setPatientEmail(profileRes.data.email); // ⬅️ Set email here
+          localStorage.setItem("patient", JSON.stringify(profileRes.data));
+        }
+        if (storedPatient) {
+          const patientObj = JSON.parse(storedPatient);
+          localPatientId = patientObj._id;
+          setPatientEmail(patientObj.email); // ⬅️ Set email from localStorage
+        }
+        
         setPatientId(localPatientId); // Store in state
         console.log("🟢 Patient ID:", localPatientId);
 
@@ -63,6 +76,56 @@ const PatientAppointments = () => {
 
     fetchAppointments();
   }, [navigate]);
+
+  // Handle cancel appointment
+  const handleCancel = (appointment) => {
+    setAppointmentToCancel(appointment);
+    setShowConfirmation(true);
+  };
+
+  // Confirm appointment cancellation
+  const confirmCancelAppointment = async () => {
+    if (!appointmentToCancel) return;
+  
+    setCancelLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+  
+      await axios.put(
+        `${API_BASE_URL}/api/patients/${appointmentToCancel._id}/cancel`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+  
+      
+      // ✅ Send cancellation email
+      await axios.post(`${API_BASE_URL}/api/email/send-cancellation`, {
+        patientName: appointmentToCancel.patient_name,
+        doctorName: appointmentToCancel.doctor_name || "Unknown",
+        specialization: appointmentToCancel.specialization || "N/A",
+        selectedDate: appointmentToCancel.appointment_date,
+        timeSlot: appointmentToCancel.time_slot,
+        toEmail: patientEmail,
+      });
+  
+      setAppointments(
+        appointments.map((app) =>
+          app._id === appointmentToCancel._id
+            ? { ...app, status: "Cancelled" }
+            : app
+        )
+      );
+  
+      setShowConfirmation(false);
+      setAppointmentToCancel(null);
+    } catch (err) {
+      console.error("Error cancelling appointment:", err);
+      alert("Failed to cancel appointment. Please try again.");
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+  
 
   if (loading) return <div className="text-center py-10 text-lg font-medium">Loading...</div>;
   if (error) return (
@@ -98,6 +161,36 @@ const PatientAppointments = () => {
     <div className="p-6 bg-gray-100 min-h-screen">
       <h1 className="text-3xl font-bold text-center mb-6">My Appointments</h1>
 
+      {/* Confirmation Modal */}
+      {showConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 className="text-xl font-bold mb-4">Cancel Appointment</h3>
+            <p className="mb-4">
+              Are you sure you want to cancel your appointment with Dr. {appointmentToCancel?.doctor_name} on{" "}
+              {format(new Date(appointmentToCancel?.appointment_date), "MMM d, yyyy")}
+              {appointmentToCancel?.time_slot && `, ${appointmentToCancel.time_slot}`}?
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowConfirmation(false)}
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                disabled={cancelLoading}
+              >
+                No, Keep It
+              </button>
+              <button
+                onClick={confirmCancelAppointment}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                disabled={cancelLoading}
+              >
+                {cancelLoading ? "Cancelling..." : "Yes, Cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-10">
         <h2 className="text-2xl font-semibold mb-4 text-blue-600">Upcoming Appointments</h2>
         {upcomingAppointments.length > 0 ? (
@@ -109,9 +202,19 @@ const PatientAppointments = () => {
                   {format(new Date(app.appointment_date), "MMM d, yyyy")}
                   {app.time_slot && `, ${app.time_slot.replace(/5:300/g, "5:30")}`}
                 </p>
-                <p className={`text-sm font-medium ${app.status === "Confirmed" ? "text-green-600" : "text-red-600"}`}>
-                  {app.status}
-                </p>
+                <div className="flex justify-between items-center mt-2">
+                  <p className={`text-sm font-medium ${app.status === "Confirmed" ? "text-green-600" : "text-red-600"}`}>
+                    {app.status}
+                  </p>
+                  {app.status === "Confirmed" && (
+                    <button
+                      onClick={() => handleCancel(app)}
+                      className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
+                    >
+                      Cancel Appointment
+                    </button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

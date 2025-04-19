@@ -193,4 +193,82 @@ router.get("/:id", verifyToken, async (req, res) => {
     }
 });
 
+router.put('/:id/cancel', verifyToken, async (req, res) => {
+    try {
+      // Get the appointment ID from params
+      const appointmentId = req.params.id;
+      
+      // Find the appointment
+      const appointment = await Appointment.findById(appointmentId);
+      
+      // Check if appointment exists
+      if (!appointment) {
+        return res.status(404).json({ message: 'Appointment not found' });
+      }
+      
+      // Check if the patient making the request owns this appointment
+      if (!req.patient || appointment.patient_id.toString() !== req.patient._id.toString()) {
+        return res.status(403).json({ message: 'Not authorized to cancel this appointment' });
+      }
+      
+      // Check if appointment is already cancelled
+      if (appointment.status === 'Cancelled') {
+        return res.status(400).json({ message: 'Appointment is already cancelled' });
+      }
+      
+      // Optional: Check if appointment is in the past
+      const appointmentDate = new Date(appointment.appointment_date);
+      const today = new Date();
+      if (appointmentDate < today) {
+        return res.status(400).json({ message: 'Cannot cancel past appointments' });
+      }
+  
+      // Update the appointment status to cancelled
+      appointment.status = 'Cancelled';
+      appointment.updated_at = Date.now();
+      
+      // Save the updated appointment
+      await appointment.save();
+      
+      // Free up the doctor's time slot by updating their time_slots
+      const doctor = await Doctor.findById(appointment.doctor_id);
+      if (doctor) {
+        // Format the appointment date to match your time_slots format (YYYY-MM-DD)
+        const appointmentDateStr = appointmentDate.toISOString().split('T')[0];
+        
+        // Find the specific date entry in time_slots
+        const dateEntry = doctor.time_slots.find(entry => 
+          entry.date === appointmentDateStr
+        );
+        
+        if (dateEntry && dateEntry.slots) {
+          // Find the specific time slot and update its status to free
+          const slotToUpdate = dateEntry.slots.find(slot => 
+            slot.time === appointment.time_slot
+          );
+          
+          if (slotToUpdate) {
+            slotToUpdate.status = 'free';
+            
+            // Save the updated doctor document
+            await doctor.save();
+            console.log(`Time slot ${appointment.time_slot} on ${appointmentDateStr} has been marked as free for Dr. ${doctor.name}`);
+          }
+        }
+        
+        // Log cancellation
+        console.log(`Appointment cancelled for Dr. ${doctor.name} on ${appointment.appointment_date}`);
+      }
+      
+      // Return success response
+      res.json({ 
+        message: 'Appointment cancelled successfully. The time slot is now available for booking.', 
+        appointment 
+      });
+      
+    } catch (err) {
+      console.error('Error cancelling appointment:', err);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
 module.exports = router;

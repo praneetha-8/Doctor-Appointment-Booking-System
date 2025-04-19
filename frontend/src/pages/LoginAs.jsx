@@ -34,11 +34,7 @@ const LoginAs = () => {
         {/* Logo */}
         <div className="absolute -top-12 left-4">
           <div className="flex items-center gap-2">
-            <img 
-              src="/api/placeholder/40/40" 
-              alt="Medico Logo" 
-              className="w-10 h-10"
-            />
+            
             <span className="text-2xl font-bold text-blue-600">Medico</span>
           </div>
         </div>

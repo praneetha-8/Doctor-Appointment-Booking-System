@@ -76,23 +76,38 @@ const SpecialistList = () => {
 
   // Get available time slots for a doctor based on the selected date
   const getAvailableTimeSlots = (doctor) => {
-    if (!doctor.time_slots || !Array.isArray(doctor.time_slots)) {
-      return [];
-    }
-    
+    if (!doctor.time_slots || !Array.isArray(doctor.time_slots)) return [];
+  
+    const today = new Date();
+    const selected = new Date(selectedDate);
+  
+    // Don't show any slots if selected date is in the past
+    if (selected < new Date(today.toDateString())) return [];
+  
     const timeSlotForDate = doctor.time_slots.find(
-      slot => slot.date === selectedDate
+      (slot) => slot.date === selectedDate
     );
-    
-    if (!timeSlotForDate || !timeSlotForDate.slots) {
-      return [];
-    }
-    
-    // Filter only "free" slots according to the schema
+  
+    if (!timeSlotForDate || !timeSlotForDate.slots) return [];
+  
     return timeSlotForDate.slots
-      .filter(slot => slot.status === 'free')
-      .map(slot => slot.time);
+      .filter((slot) => {
+        if (slot.status !== 'free') return false;
+  
+        // If the selected date is today, remove past time slots
+        if (selected.toDateString() === today.toDateString()) {
+          const [hour, minute] = slot.time.split(":").map(Number);
+          const slotDateTime = new Date(selected);
+          slotDateTime.setHours(hour, minute, 0, 0);
+  
+          return slotDateTime > today;
+        }
+  
+        return true;
+      })
+      .map((slot) => slot.time);
   };
+  
 
   const bookDoctor = (doctor) => {
     const selectedTimeSlot = selectedSlots[doctor._id];

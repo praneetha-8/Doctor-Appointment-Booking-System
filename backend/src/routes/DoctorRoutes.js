@@ -154,54 +154,84 @@ router.post("/login", async (req, res) => {
 });
 
 
-
-// Add a new time slot or update existing one for a date
 router.post("/add-timeslot", verifyTokenForDoctor, async (req, res) => {
   const { date, slots } = req.body;
-  
-  if (!date || !slots || !Array.isArray(slots) || slots.length === 0) {
-    return res.status(400).json({ 
-      message: "Invalid request. Please provide a date and array of time slots." 
-    });
+
+  if (!date || !Array.isArray(slots) || slots.length === 0) {
+    return res.status(400).json({ message: "Invalid request. Provide date and time slots." });
   }
-  
+
   try {
     const doctor = await Doctor.findById(req.doctor.doctorId);
-    if (!doctor) {
-      return res.status(404).json({ message: "Doctor not found" });
+    if (!doctor) return res.status(404).json({ message: "Doctor not found" });
+
+    const today = new Date();
+    const inputDate = new Date(date);
+    const todayStr = today.toISOString().split("T")[0];
+    const inputDateStr = inputDate.toISOString().split("T")[0];
+
+    if (inputDateStr < todayStr) {
+      return res.status(400).json({ message: "Cannot add slots for past dates." });
     }
-    
-    // Check if there's already a slot for this date
-    const existingSlotIndex = doctor.time_slots.findIndex(
-      ts => ts.date === date
-    );
-    
+
+    let filteredSlots = [];
+
+    for (const slot of slots) {
+      if (!slot.time) return res.status(400).json({ message: "Missing time field in slot." });
+
+      const [start, end] = slot.time.split(" - ");
+      if (!start || !end) {
+        return res.status(400).json({ message: `Invalid time format: ${slot.time}` });
+      }
+
+      const [startHour, startMin] = start.split(":").map(Number);
+      const [endHour, endMin] = end.split(":").map(Number);
+
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+
+      if (startMinutes >= endMinutes) {
+        return res.status(400).json({ message: `Invalid slot: ${slot.time}` });
+      }
+
+      if (inputDateStr === todayStr) {
+        const nowMinutes = today.getHours() * 60 + today.getMinutes();
+        if (startMinutes <= nowMinutes) continue;
+      }
+
+      filteredSlots.push(slot);
+    }
+
+    if (filteredSlots.length === 0) {
+      return res.status(400).json({ message: "All slots are in the past or invalid." });
+    }
+
+    const existingSlotIndex = doctor.time_slots.findIndex(ts => ts.date === date);
+
     if (existingSlotIndex >= 0) {
-      // Merge new slots with existing ones (avoid duplicates by checking time property)
       const existingSlots = doctor.time_slots[existingSlotIndex].slots;
-      const uniqueNewSlots = slots.filter(newSlot => 
+      const uniqueNewSlots = filteredSlots.filter(newSlot =>
         !existingSlots.some(existingSlot => existingSlot.time === newSlot.time)
       );
-      
       doctor.time_slots[existingSlotIndex].slots = [...existingSlots, ...uniqueNewSlots];
     } else {
-      // Add new date with slots
-      doctor.time_slots.push({ date, slots });
+      doctor.time_slots.push({ date, slots: filteredSlots });
     }
-    
+
     await doctor.save();
-    
+
     res.status(200).json({
       success: true,
-      message: "Time slots updated successfully",
-      time_slots: doctor.time_slots
+      message: "Time slots added successfully",
+      time_slots: doctor.time_slots,
     });
-    
-  } catch (error) {
-    console.error("Error updating time slots:", error);
-    res.status(500).json({ message: "Server error while updating time slots" });
+
+  } catch (err) {
+    console.error("Error in adding time slots:", err);
+    res.status(500).json({ message: "Server error while adding time slots" });
   }
 });
+
 
 // Get all time slots for a doctor
 router.get("/time-slots", verifyTokenForDoctor, async (req, res) => {
@@ -352,5 +382,67 @@ router.get('/appointments', verifyTokenForDoctor, async (req, res) => {
     return res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
+
+
+// ✅ Mark an appointment as completed (Doctor/Admin access)
+router.put("/appointments/complete/:appointmentId", verifyTokenForDoctor, async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    const now = new Date();
+    const appointmentDate = new Date(appointment.appointment_date);
+    const appointmentDateOnly = new Date(appointmentDate.toDateString());
+    const currentDateOnly = new Date(now.toDateString());
+
+    // 🚫 Block future date appointments
+    if (appointmentDateOnly > currentDateOnly) {
+      return res.status(400).json({
+        message: "❌ You cannot mark future appointments as completed.",
+      });
+    }
+
+    // ✅ Allow past date appointments
+    if (appointmentDateOnly < currentDateOnly) {
+      appointment.status = "Completed";
+      await appointment.save();
+      return res.status(200).json({
+        message: "✅ Appointment marked as completed",
+        appointment,
+      });
+    }
+
+    // 🕒 If date is today, compare time
+    const [hour, minute] = appointment.time_slot.split(":");
+    const appointmentTime = new Date(appointment.appointment_date);
+    appointmentTime.setHours(+hour);
+    appointmentTime.setMinutes(+minute);
+    appointmentTime.setSeconds(0);
+
+    if (appointmentTime > now) {
+      return res.status(400).json({
+        message: "❌ You cannot mark an upcoming time slot as completed.",
+      });
+    }
+
+    // ✅ Valid date and time, mark as completed
+    appointment.status = "Completed";
+    await appointment.save();
+
+    res.status(200).json({
+      message: "✅ Appointment marked as completed",
+      appointment,
+    });
+  } catch (error) {
+    console.error("❌ Error updating appointment status:", error);
+    res.status(500).json({ message: "Server error while updating appointment" });
+  }
+});
+
+
 
 module.exports = router;
