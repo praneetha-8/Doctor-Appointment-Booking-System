@@ -73,7 +73,7 @@ async function getDoctorRecommendation(userSymptoms) {
 
   const specialist = chatResponse.choices[0].message.content.trim();
 
-  return `For symptoms like ${userSymptoms}, I recommend consulting a ${specialist}. Let me know if you need help booking an appointment!`;
+  return `For symptoms like ${userSymptoms}, I recommend consulting a ${specialist}.`;
 }
 
 module.exports = router;
