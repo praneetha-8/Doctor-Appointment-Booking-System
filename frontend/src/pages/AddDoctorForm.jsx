@@ -21,9 +21,35 @@ const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
     email: "",
     phone: "",
   });
+  const [errors, setErrors] = useState({
+    phone: ""
+  });
+
+  const validatePhone = (phone) => {
+    const phoneRegex = /^\d{10}$/;
+    return phoneRegex.test(phone);
+  };
+
+  const handlePhoneChange = (e) => {
+    const phone = e.target.value;
+    setNewDoctor({ ...newDoctor, phone });
+   
+    if (phone && !validatePhone(phone)) {
+      setErrors({ ...errors, phone: "Phone number must be 10 digits" });
+    } else {
+      setErrors({ ...errors, phone: "" });
+    }
+  };
 
   const handleAddDoctor = async (e) => {
     e.preventDefault();
+   
+    // Validate phone number before submission
+    if (!validatePhone(newDoctor.phone)) {
+      setErrors({ ...errors, phone: "Phone number must be 10 digits" });
+      return;
+    }
+
     try {
       const token = localStorage.getItem("adminToken");
       if (!token) {
@@ -31,15 +57,13 @@ const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
         return;
       }
 
-      console.log(newDoctor);
-
       const response = await fetch("http://localhost:5000/api/doctors/add", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify({ ...newDoctor, time_slots: [] }), // Changed from time_slot to time_slots
+        body: JSON.stringify({ ...newDoctor, time_slots: [] }),
       });
 
       if (!response.ok) {
@@ -53,6 +77,7 @@ const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
       onClose();
     } catch (error) {
       console.error("Error adding doctor:", error);
+      alert(error.message || "Failed to add doctor");
     }
   };
 
@@ -91,20 +116,39 @@ const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
             required
             className="border p-2 w-full mb-2"
           />
-          <input
-            type="text"
-            placeholder="Phone"
-            value={newDoctor.phone}
-            onChange={(e) => setNewDoctor({ ...newDoctor, phone: e.target.value })}
-            required
-            className="border p-2 w-full mb-2"
-          />
-          
+         
+          <div className="mb-2">
+            <input
+              type="tel"
+              placeholder="Phone (10 digits)"
+              value={newDoctor.phone}
+              onChange={handlePhoneChange}
+              required
+              className="border p-2 w-full"
+              maxLength="10"
+            />
+            {errors.phone && (
+              <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
+            )}
+          </div>
+         
           <div className="flex justify-between">
-            <button className="bg-green-500 text-white px-4 py-2 rounded" type="submit">
+            <button
+              className={`px-4 py-2 rounded ${
+                errors.phone
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-green-500 hover:bg-green-600 text-white"
+              }`}
+              type="submit"
+              disabled={!!errors.phone}
+            >
               Save Doctor
             </button>
-            <button className="bg-red-500 text-white px-4 py-2 rounded" onClick={onClose}>
+            <button
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+              onClick={onClose}
+              type="button"
+            >
               Cancel
             </button>
           </div>
@@ -112,6 +156,8 @@ const AddDoctorForm = ({ onDoctorAdded, onClose }) => {
       </div>
     </div>
   );
+
 };
+
 
 export default AddDoctorForm;

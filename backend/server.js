@@ -7,7 +7,7 @@ const patientRoutes = require("./src/routes/patientRoutes");
 const adminRoutes = require("./src/routes/Adminroutes");
 const doctorsRoutes = require("./src/routes/DoctorRoutes");
 const appointmentRoutes = require("./src/routes/AppointmentRoutes");
-const emailRoutes = require("./src/routes/emailRoutes");
+const emailRoutes  = require("./src/routes/emailRoutes");
 const chatbotRoutes = require("./src/routes/chatbotRoutes");
 
 const app = express();

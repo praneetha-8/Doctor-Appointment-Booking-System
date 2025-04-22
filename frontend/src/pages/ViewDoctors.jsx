@@ -53,6 +53,31 @@ const DoctorsList = () => {
       console.error("Error fetching doctors:", error);
     }
   };
+  const handleDeleteDoctor = async (doctorId) => {
+    const token = localStorage.getItem("adminToken");
+  
+    const confirmDelete = window.confirm("Are you sure you want to delete this doctor?");
+    if (!confirmDelete) return;
+  
+    try {
+      const response = await fetch(`http://localhost:5000/api/doctors/deletedoctor/${doctorId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+  
+      if (!response.ok) throw new Error("Failed to delete doctor");
+  
+      // Remove the doctor from the local state
+      setDoctors((prevDoctors) => prevDoctors.filter((doc) => doc._id !== doctorId));
+    } catch (error) {
+      console.error("Error deleting doctor:", error);
+      alert("Failed to delete doctor. Please try again.");
+    }
+  };
+  
 
   // Function to handle adding a new doctor
   const handleDoctorAdded = (newDoctor) => {
@@ -79,7 +104,7 @@ const DoctorsList = () => {
             <th className="p-3 border">Specialization</th>
             <th className="p-3 border">Email</th>
             <th className="p-3 border">Phone</th>
-            
+            <th className="p-3 border">Actions</th> {/* New column */}
           </tr>
         </thead>
         <tbody>
@@ -90,6 +115,14 @@ const DoctorsList = () => {
                 <td className="p-3 border">{doctor.specialization}</td>
                 <td className="p-3 border">{doctor.email}</td>
                 <td className="p-3 border">{doctor.phone}</td>
+                <td className="p-3 border">
+          <button
+            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+            onClick={() => handleDeleteDoctor(doctor._id)}
+          >
+            Delete
+          </button>
+        </td>
                 
               </tr>
             ))
