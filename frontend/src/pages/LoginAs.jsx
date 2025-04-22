@@ -60,7 +60,7 @@ const HomePage = () => {
               Doctor<br />Appointments System
             </h1>
             <p className="text-lg text-gray-600 mb-8">
-              Welcome to SRM Hospitals – your digital gateway to modern healthcare. Book, cancel, and explore AI-driven health predictions in just a few clicks.
+              Welcome to Medico Hospitals – your digital gateway to modern healthcare. Book, cancel, and explore AI-driven health predictions in just a few clicks.
             </p>
             <button
               onClick={() => handleLogin('patient')}

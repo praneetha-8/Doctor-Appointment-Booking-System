@@ -227,7 +227,7 @@ const PatientAppointments = () => {
                   {format(new Date(app.appointment_date), "MMM d, yyyy")}
                   {app.time_slot && `, ${app.time_slot.replace(/5:300/g, "5:30")}`}
                 </p>
-                <p className={`text-sm font-medium ${app.status === "Confirmed" ? "text-green-600" : "text-red-600"}`}>
+                <p className={`text-sm font-medium ${app.status === "Confirmed" || app.status === "Completed" ? "text-green-600" : "text-red-600"}`}>
                   {app.status}
                 </p>
               </li>
