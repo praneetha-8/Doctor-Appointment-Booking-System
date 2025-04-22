@@ -15,9 +15,9 @@ const PatientDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeSection, setActiveSection] = useState("home");
-  const [isChatOpen, setIsChatOpen] = useState(false); // Chat toggle
-  const [messages, setMessages] = useState([]); // Store messages
-  const [userMessage, setUserMessage] = useState(""); // User's message
+  const [isChatOpen, setIsChatOpen] = useState(false); 
+  const [messages, setMessages] = useState([]); 
+  const [userMessage, setUserMessage] = useState(""); 
 
   useEffect(() => {
     const fetchPatientData = async () => {
@@ -50,30 +50,7 @@ const PatientDashboard = () => {
     fetchPatientData();
   }, [navigate]);
 
-  // const handleSendMessage = async () => {
-  //   if (!userMessage.trim()) return;
 
-  //   // Add user's message to the state
-  //   setMessages((prevMessages) => [
-  //     ...prevMessages,
-  //     { sender: "user", text: userMessage },
-  //   ]);
-
-  //   try {
-  //     const response = await axios.post(`${API_BASE_URL}/api/chatbot/message`, { message: userMessage });
-
-  //     // Add chatbot response to the messages state
-  //     setMessages((prevMessages) => [
-  //       ...prevMessages,
-  //       { sender: "chatbot", text: response.data.message },
-  //     ]);
-
-  //     // Clear the input field
-  //     setUserMessage("");
-  //   } catch (err) {
-  //     console.error("Error sending message:", err);
-  //   }
-  // };
   const handleSendMessage = async () => {
     if (!userMessage.trim()) return;
 

@@ -7,7 +7,6 @@ const { v4: uuidv4 } = require("uuid");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// ✅ Middleware to authenticate users
 const authenticateUser = (req, res, next) => {
   const authHeader = req.header("Authorization");
 
@@ -36,7 +35,43 @@ const authenticateUser = (req, res, next) => {
   }
 };
 
-// ✅ Get all appointments (Admin/Authorized user only)
+router.put("/:id/cancel", authenticateUser, async (req, res) => {
+  try {
+    const appointmentId = req.params.id;
+    const { doctor_id } = req.body;  
+
+    
+    const appointment = await Appointment.findById(appointmentId);
+    
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    
+    if (appointment.status === "Cancelled") {
+      return res.status(400).json({ message: "This appointment has already been cancelled" });
+    }
+
+    
+    appointment.status = "Cancelled";
+    await appointment.save();
+
+    
+    if (doctor_id) {
+      
+      await Doctor.findByIdAndUpdate(doctor_id, {
+        $pull: { booked_slots: { date: appointment.appointment_date, time: appointment.time_slot } }
+      });
+    }
+
+    res.json({ message: "Appointment cancelled successfully", appointment });
+  } catch (error) {
+    console.error("❌ Error cancelling appointment:", error);
+    res.status(500).json({ message: "Server error cancelling appointment" });
+  }
+});
+
+
 router.get("/", authenticateUser, async (req, res) => {
   try {
     const appointments = await Appointment.find();
@@ -47,7 +82,6 @@ router.get("/", authenticateUser, async (req, res) => {
   }
 });
 
-// ✅ Book an appointment
 router.post("/book", authenticateUser, async (req, res) => {
   try {
     console.log("📥 Received Appointment Data:", req.body);
@@ -63,13 +97,10 @@ router.post("/book", authenticateUser, async (req, res) => {
       status
     } = req.body;
 
-    // Basic validation
     if (!patient_id || !doctor_id || !doctor_name || !patient_name || !specialization || !appointment_date || !time_slot||!status) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // Optional: Check if the doctor has this time_slot available on this date
-    // (You can implement this check with Doctor.findOne())
 
     const newAppointment = new Appointment({
       _id: uuidv4(),

@@ -96,7 +96,10 @@ const SpecialistList = () => {
   
         // If the selected date is today, remove past time slots
         if (selected.toDateString() === today.toDateString()) {
-          const [hour, minute] = slot.time.split(":").map(Number);
+          // Extract just the start time (assuming format like "17:00 - 17:15")
+          const startTime = slot.time.split(" - ")[0];
+          const [hour, minute] = startTime.split(":").map(Number);
+          
           const slotDateTime = new Date(selected);
           slotDateTime.setHours(hour, minute, 0, 0);
   
@@ -200,7 +203,7 @@ const SpecialistList = () => {
                 value={selectedDate}
                 onChange={(e) => {
                   setSelectedDate(e.target.value);
-                  setSelectedSlots({}); // Reset selected slots when date changes
+                  setSelectedSlots({}); 
                 }}
                 className="p-3 border rounded-lg w-full"
                 min={new Date().toISOString().split("T")[0]}

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE_URL = "http://localhost:5000"; // Adjust to your backend URL
+const API_BASE_URL = "http://localhost:5000"; 
 
 const PatientAppointments = () => {
   const navigate = useNavigate();
@@ -41,7 +41,7 @@ const PatientAppointments = () => {
           localStorage.setItem("patient", JSON.stringify(profileRes.data));
 
           localPatientId = profileRes.data._id;
-          setPatientEmail(profileRes.data.email); // ⬅️ Set email here
+          setPatientEmail(profileRes.data.email); 
           localStorage.setItem("patient", JSON.stringify(profileRes.data));
         }
         if (storedPatient) {
@@ -84,6 +84,7 @@ const PatientAppointments = () => {
   };
 
   // Confirm appointment cancellation
+
   const confirmCancelAppointment = async () => {
     if (!appointmentToCancel) return;
   
@@ -91,14 +92,16 @@ const PatientAppointments = () => {
     try {
       const token = localStorage.getItem("token");
   
-      await axios.put(
-        `${API_BASE_URL}/api/patients/${appointmentToCancel._id}/cancel`,
-        {},
+      // Call unified cancellation endpoint (updates both appointment + doctor DB)
+      const cancelRes = await axios.put(
+        `${API_BASE_URL}/api/appointments/${appointmentToCancel._id}/cancel`,
+        { doctorId: appointmentToCancel.doctor_id }, // Send doctorId too
         { headers: { Authorization: `Bearer ${token}` } }
       );
   
-      
-      // ✅ Send cancellation email
+      console.log("✅ Cancellation response:", cancelRes.data);
+  
+      // Send cancellation email
       await axios.post(`${API_BASE_URL}/api/email/send-cancellation`, {
         patientName: appointmentToCancel.patient_name,
         doctorName: appointmentToCancel.doctor_name || "Unknown",
@@ -108,6 +111,7 @@ const PatientAppointments = () => {
         toEmail: patientEmail,
       });
   
+      // Update local appointment state
       setAppointments(
         appointments.map((app) =>
           app._id === appointmentToCancel._id
@@ -119,12 +123,13 @@ const PatientAppointments = () => {
       setShowConfirmation(false);
       setAppointmentToCancel(null);
     } catch (err) {
-      console.error("Error cancelling appointment:", err);
+      console.error("❌ Error cancelling appointment:", err);
       alert("Failed to cancel appointment. Please try again.");
     } finally {
       setCancelLoading(false);
     }
   };
+  
   
 
   if (loading) return <div className="text-center py-10 text-lg font-medium">Loading...</div>;
@@ -141,21 +146,7 @@ const PatientAppointments = () => {
   const upcomingAppointments = appointments.filter((app) => new Date(app.appointment_date) >= today);
   const previousAppointments = appointments.filter((app) => new Date(app.appointment_date) < today);
 
-  // Format date and time properly
-  const formatAppointmentDateTime = (date, timeSlot) => {
-    try {
-      // Format the date portion
-      const formattedDate = format(new Date(date), "MMM d, yyyy");
-      
-      // Clean up the time slot format (remove any ':00' from times)
-      const cleanTimeSlot = timeSlot.replace(/:00-/, "-").replace(/:00$/, "");
-      
-      return `${formattedDate}, ${cleanTimeSlot}`;
-    } catch (err) {
-      console.error("Error formatting date:", err);
-      return "Invalid date";
-    }
-  };
+
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">

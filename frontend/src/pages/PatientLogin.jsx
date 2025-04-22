@@ -10,7 +10,7 @@ const PatientLogin = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError(""); // Clear previous errors
+    setError(""); 
 
     try {
       const response = await axios.post("http://localhost:5000/api/patients/login", {

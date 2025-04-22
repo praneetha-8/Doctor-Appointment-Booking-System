@@ -15,7 +15,7 @@ const Profile = ({ patient: propPatient }) => {
       const token = localStorage.getItem("token");
 
       if (!token) {
-        navigate("/patient-login"); // Redirect to login if token is missing
+        navigate("/patient-login"); 
         return;
       }
 

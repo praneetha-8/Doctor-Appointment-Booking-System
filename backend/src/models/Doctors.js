@@ -1,29 +1,26 @@
 const mongoose = require("mongoose");
 const bcrypt = require('bcryptjs');
 
-// Schema for individual time slot with status
 const slotSchema = new mongoose.Schema({
   time: { type: String, required: true },
   status: { type: String, enum: ['free', 'booked'], default: 'free' }
 }, { _id: false });
 
-// Schema for date with multiple slots
 const timeSlotSchema = new mongoose.Schema({
   date: { type: String, required: true },
-  slots: [slotSchema] // Array of slots with time and status
+  slots: [slotSchema] 
 }, { _id: false });
 
 const doctorSchema = new mongoose.Schema({
-  _id: { type: String, required: true }, // Explicitly defining _id as a string
+  _id: { type: String, required: true }, 
   name: { type: String, required: true },
   specialization: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   phone: { type: String, required: true },
   password: { type: String, required: true },
-  time_slots: [timeSlotSchema] // Array of time slots with dates
+  time_slots: [timeSlotSchema] 
 });
 
-// Password hashing before saving
 doctorSchema.pre("save", async function (next) {
   if (!this.isModified("password") || this.password.startsWith("$2")) {
     return next();
@@ -32,7 +29,6 @@ doctorSchema.pre("save", async function (next) {
   next();
 });
 
-// Method to compare passwords
 doctorSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };

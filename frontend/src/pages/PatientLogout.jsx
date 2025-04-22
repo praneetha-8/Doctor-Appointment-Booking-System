@@ -6,21 +6,19 @@ const PatientLogout = () => {
 
   const handleLogout = async () => {
     try {
-      // Optionally, inform the backend about logout (if applicable)
+      
       await fetch("http://localhost:5000/api/patients/logout", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`, // Send token if needed
+          "Authorization": `Bearer ${localStorage.getItem("token")}`, 
         },
       });
 
-      // Clear JWT token and session data
       
       localStorage.removeItem("user");
       localStorage.removeItem("token");
       sessionStorage.clear();
 
-      // Redirect to login page
       navigate("/patient-login");
     } catch (error) {
       console.error("Logout failed:", error);

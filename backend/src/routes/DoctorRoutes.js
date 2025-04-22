@@ -1,15 +1,15 @@
-require("dotenv").config(); // Load environment variables
-
+require("dotenv").config();
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const Doctor = require("../models/Doctors"); // Import the Doctor model
+const Doctor = require("../models/Doctors");
 const Appointment = require("../models/Appointments");
 
-const JWT_SECRET = process.env.JWT_SECRET || "your_default_secret_key"; // Use .env for security
+const JWT_SECRET = process.env.JWT_SECRET || "your_default_secret_key";
 
+// Middleware to verify token for doctor
 const verifyTokenForDoctor = (req, res, next) => {
   const authHeader = req.header("Authorization");
 
@@ -17,18 +17,18 @@ const verifyTokenForDoctor = (req, res, next) => {
     return res.status(401).json({ message: "Access Denied. No token provided." });
   }
 
-  const token = authHeader.split(" ")[1]; // Extract token
+  const token = authHeader.split(" ")[1];
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.doctor = decoded; // Attach decoded doctor details
+    req.doctor = decoded;
     next();
   } catch (error) {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
 
-// Middleware to verify JWT for admin authentication
+// Middleware to verify token for admin
 const authenticateAdmin = (req, res, next) => {
   const token = req.header("Authorization");
   if (!token) {
@@ -44,45 +44,28 @@ const authenticateAdmin = (req, res, next) => {
   }
 };
 
-// Replace the generateRandomPassword function and its usage in the /add route
-
-// Remove or comment out the original random password generator function
-// const generateRandomPassword = (length = 8) => {
-//   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-//   let password = "";
-//   for (let i = 0; i < length; i++) {
-//     password += chars.charAt(Math.floor(Math.random() * chars.length));
-//   }
-//   return password;
-// };
-
-// Add this new function to generate password from doctor's name
+// Generate password from doctor's name
 const generatePasswordFromName = (name) => {
-  // Convert name to lowercase and remove any spaces or special characters
   return name.toLowerCase().replace(/[^a-z0-9]/g, '');
 };
 
-// Then modify the doctor add route
+// Add new doctor
 router.post("/add", authenticateAdmin, async (req, res) => {
   const { name, email, specialization, phone } = req.body;
 
-  // 🔍 Validation: Check if required fields are provided
   if (!name || !email || !specialization || !phone) {
     return res.status(400).json({ message: "All fields are required" });
   }
 
   try {
-    // 🔍 Check if doctor already exists
     let existingDoctor = await Doctor.findOne({ email });
     if (existingDoctor) {
       return res.status(400).json({ message: "Doctor with this email already exists" });
     }
 
-    // 🔐 Generate Password from Doctor's Name
     const passwordFromName = generatePasswordFromName(name);
     const hashedPassword = await bcrypt.hash(passwordFromName, 10);
 
-    // 📝 Create new doctor
     const newDoctor = new Doctor({
       _id: new mongoose.Types.ObjectId().toString(),
       name,
@@ -90,10 +73,9 @@ router.post("/add", authenticateAdmin, async (req, res) => {
       password: hashedPassword,
       specialization,
       phone,
-      time_slots: [], // Empty array for time slots
+      time_slots: [],
     });
 
-    // 💾 Save to Database
     await newDoctor.save();
 
     res.status(201).json({
@@ -114,7 +96,7 @@ router.post("/add", authenticateAdmin, async (req, res) => {
   }
 });
 
-// ✅ Doctor Login Route with JWT Token
+// Doctor login
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -129,17 +111,16 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // Generate JWT Token
     const token = jwt.sign(
       { doctorId: doctor._id, name: doctor.name, specialization: doctor.specialization },
       JWT_SECRET,
-      { expiresIn: "1h" } // Token expires in 1 hour
+      { expiresIn: "1h" }
     );
 
     res.status(200).json({
       success: true,
       message: "Login successful",
-      token, // Send token to the client
+      token,
       doctor: {
         _id: doctor._id,
         name: doctor.name,
@@ -153,7 +134,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-
+// Add time slots
 router.post("/add-timeslot", verifyTokenForDoctor, async (req, res) => {
   const { date, slots } = req.body;
 
@@ -232,8 +213,7 @@ router.post("/add-timeslot", verifyTokenForDoctor, async (req, res) => {
   }
 });
 
-
-// Get all time slots for a doctor
+// Get time slots
 router.get("/time-slots", verifyTokenForDoctor, async (req, res) => {
   try {
     const doctor = await Doctor.findById(req.doctor.doctorId);
@@ -252,7 +232,7 @@ router.get("/time-slots", verifyTokenForDoctor, async (req, res) => {
   }
 });
 
-// Delete a time slot
+// Delete time slot
 router.delete("/delete-slot", verifyTokenForDoctor, async (req, res) => {
   const { date, slotTime } = req.body;
   
@@ -271,18 +251,36 @@ router.delete("/delete-slot", verifyTokenForDoctor, async (req, res) => {
       return res.status(404).json({ message: "No slots found for this date" });
     }
     
-    // First check if the slot is booked
     const slotToDelete = doctor.time_slots[dateIndex].slots.find(slot => slot.time === slotTime);
     
     if (slotToDelete && slotToDelete.status === 'booked') {
-      return res.status(400).json({ message: "Cannot delete a booked slot" });
+      // Check if there's an active appointment for this slot
+      const appointmentDate = new Date(date);
+      appointmentDate.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      
+      const existingAppointment = await Appointment.findOne({
+        doctor_id: doctor._id,
+        appointment_date: {
+          $gte: appointmentDate,
+          $lte: endDate
+        },
+        time_slot: slotTime,
+        status: { $ne: 'Cancelled' }
+      });
+      
+      if (existingAppointment) {
+        return res.status(400).json({ 
+          message: "Cannot delete a slot with an active appointment" 
+        });
+      }
     }
     
-    // Filter out the slot to remove by time property
     doctor.time_slots[dateIndex].slots = doctor.time_slots[dateIndex].slots
       .filter(slot => slot.time !== slotTime);
     
-    // If no slots left for this date, remove the date entry
     if (doctor.time_slots[dateIndex].slots.length === 0) {
       doctor.time_slots.splice(dateIndex, 1);
     }
@@ -301,7 +299,7 @@ router.delete("/delete-slot", verifyTokenForDoctor, async (req, res) => {
   }
 });
 
-// ✅ Get Doctor Profile (Protected)
+// Get doctor profile
 router.get("/profile", verifyTokenForDoctor, async (req, res) => {
   try {
     const doctor = await Doctor.findById(req.doctor.doctorId).select("-password");
@@ -314,10 +312,10 @@ router.get("/profile", verifyTokenForDoctor, async (req, res) => {
   }
 });
 
-// ✅ API Route to View Doctors (Admin Only)
+// View all doctors (admin only)
 router.get("/viewdoctors", authenticateAdmin, async (req, res) => {
   try {
-    const doctors = await Doctor.find().select("-password"); // Exclude passwords
+    const doctors = await Doctor.find().select("-password");
     res.status(200).json(doctors);
   } catch (error) {
     console.error("Error fetching doctors:", error);
@@ -325,7 +323,7 @@ router.get("/viewdoctors", authenticateAdmin, async (req, res) => {
   }
 });
 
-// Get appointments for a doctor on a specific date
+// Get appointments for a doctor
 router.get('/appointments', verifyTokenForDoctor, async (req, res) => {
   try {
     const { date } = req.query;
@@ -335,44 +333,44 @@ router.get('/appointments', verifyTokenForDoctor, async (req, res) => {
       return res.status(400).json({ message: 'Date is required' });
     }
 
-    // Create date range for the selected date (start of day to end of day)
     const startDate = new Date(date);
     startDate.setHours(0, 0, 0, 0);
 
     const endDate = new Date(date);
     endDate.setHours(23, 59, 59, 999);
 
-    // Find appointments matching the criteria
     const appointments = await Appointment.find({
       doctor_id: doctorId,
       appointment_date: {
         $gte: startDate,
         $lte: endDate
       }
-    });
+    }).populate('patient_id', 'name email phone');
 
-    // For each appointment that exists, update the corresponding slot status to 'booked'
-    if (appointments.length > 0) {
-      const doctor = await Doctor.findById(doctorId);
+    // Sync slot statuses with appointments
+    const doctor = await Doctor.findById(doctorId);
+    if (doctor) {
+      const dateSlotIndex = doctor.time_slots.findIndex(ts => ts.date === date);
       
-      if (doctor) {
-        const dateSlotIndex = doctor.time_slots.findIndex(ts => ts.date === date);
-        
-        if (dateSlotIndex !== -1) {
-          // Update slot status for each appointment
-          appointments.forEach(appointment => {
-            const slotIndex = doctor.time_slots[dateSlotIndex].slots.findIndex(
-              slot => slot.time === appointment.time_slot
-            );
-            
-            if (slotIndex !== -1) {
-              doctor.time_slots[dateSlotIndex].slots[slotIndex].status = 'booked';
-            }
-          });
+      if (dateSlotIndex !== -1) {
+        // Reset all slots to free first
+        doctor.time_slots[dateSlotIndex].slots.forEach(slot => {
+          slot.status = 'free';
+        });
+
+        // Mark booked slots based on active appointments
+        const activeAppointments = appointments.filter(a => a.status !== 'Cancelled');
+        activeAppointments.forEach(appointment => {
+          const slotIndex = doctor.time_slots[dateSlotIndex].slots.findIndex(
+            slot => slot.time === appointment.time_slot
+          );
           
-          // Save the updated doctor document
-          await doctor.save();
-        }
+          if (slotIndex !== -1) {
+            doctor.time_slots[dateSlotIndex].slots[slotIndex].status = 'booked';
+          }
+        });
+        
+        await doctor.save();
       }
     }
 
@@ -383,8 +381,7 @@ router.get('/appointments', verifyTokenForDoctor, async (req, res) => {
   }
 });
 
-
-// ✅ Mark an appointment as completed (Doctor/Admin access)
+// Mark appointment as completed
 router.put("/appointments/complete/:appointmentId", verifyTokenForDoctor, async (req, res) => {
   try {
     const { appointmentId } = req.params;
@@ -399,14 +396,12 @@ router.put("/appointments/complete/:appointmentId", verifyTokenForDoctor, async 
     const appointmentDateOnly = new Date(appointmentDate.toDateString());
     const currentDateOnly = new Date(now.toDateString());
 
-    // 🚫 Block future date appointments
     if (appointmentDateOnly > currentDateOnly) {
       return res.status(400).json({
         message: "❌ You cannot mark future appointments as completed.",
       });
     }
 
-    // ✅ Allow past date appointments
     if (appointmentDateOnly < currentDateOnly) {
       appointment.status = "Completed";
       await appointment.save();
@@ -416,7 +411,6 @@ router.put("/appointments/complete/:appointmentId", verifyTokenForDoctor, async 
       });
     }
 
-    // 🕒 If date is today, compare time
     const [hour, minute] = appointment.time_slot.split(":");
     const appointmentTime = new Date(appointment.appointment_date);
     appointmentTime.setHours(+hour);
@@ -429,7 +423,6 @@ router.put("/appointments/complete/:appointmentId", verifyTokenForDoctor, async 
       });
     }
 
-    // ✅ Valid date and time, mark as completed
     appointment.status = "Completed";
     await appointment.save();
 
@@ -443,6 +436,53 @@ router.put("/appointments/complete/:appointmentId", verifyTokenForDoctor, async 
   }
 });
 
+// Sync slots with appointments (manual trigger)
+router.post("/sync-slots", verifyTokenForDoctor, async (req, res) => {
+  try {
+    const doctor = await Doctor.findById(req.doctor.doctorId);
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
 
+    // For each date with slots
+    for (const dateSlot of doctor.time_slots) {
+      // Get all appointments for this date
+      const startDate = new Date(dateSlot.date);
+      startDate.setHours(0, 0, 0, 0);
+
+      const endDate = new Date(dateSlot.date);
+      endDate.setHours(23, 59, 59, 999);
+
+      const appointments = await Appointment.find({
+        doctor_id: doctor._id,
+        appointment_date: {
+          $gte: startDate,
+          $lte: endDate
+        }
+      });
+
+      // Reset all slots to free first
+      dateSlot.slots.forEach(slot => {
+        slot.status = 'free';
+      });
+
+      // Mark booked slots based on existing appointments
+      appointments.forEach(appointment => {
+        if (appointment.status !== 'Cancelled') {
+          const slot = dateSlot.slots.find(s => s.time === appointment.time_slot);
+          if (slot) {
+            slot.status = 'booked';
+          }
+        }
+      });
+    }
+
+    await doctor.save();
+    res.json({ message: "Slots synchronized successfully", doctor });
+  } catch (error) {
+    console.error("Error synchronizing slots:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 module.exports = router;
