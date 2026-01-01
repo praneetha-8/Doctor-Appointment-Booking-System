@@ -126,10 +126,7 @@ const HomePage = () => {
         <div className="text-lg text-gray-700 text-center">
           <p className="mb-2">👨‍💻 <strong>Team Members</strong></p>
           <ul className="mb-4 space-y-1">
-            <li>A. Sudheesh (AP22110011083)</li>
-            <li>Kaja Jaya Sankar Saketh (AP22110011083)</li>
-            <li>K. Saritha (AP22110011110)</li>
-            <li>N. Janani (AP22110011102)</li>
+            <li>B. Praneetha (AP22110011107)</li>
           </ul>
           <p className="text-sm text-gray-500 mt-6 italic">
             This system is developed as part of an academic project at SRM Institute of Science and Technology.
